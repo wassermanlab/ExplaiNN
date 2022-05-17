@@ -83,7 +83,7 @@ model, train_error, test_error = train.train_explainn(dataloaders['train'],
 showPlot(train_error, test_error, "Loss trend", "Loss")
 ```
 
-![](Figures\example_train.png)
+<img src="Figures\example_train.png" style="zoom:100%;" />
 
 ### Testing the model
 
@@ -216,7 +216,7 @@ sns.clustermap(weight_df, cmap=sns.diverging_palette(145, 10, s=60, as_cmap=True
 plt.show()
 ```
 
-![](Figures\weights_TF.png)
+<img src="Figures\weights_TF.png" style="zoom:55%;" />
 
 #### Individual unit importance
 
@@ -240,4 +240,4 @@ plt.xticks(rotation=90)
 plt.show()
 ```
 
-![](Figures\importance_TF.png)
+<img src="Figures\importance_TF.png" style="zoom:55%;" />
