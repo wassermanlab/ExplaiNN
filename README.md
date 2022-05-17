@@ -12,7 +12,7 @@ Explainn library is available on pip and can be installed with:
 pip install explainn==0.1.5
 ```
 
-Note that torch should be installed in the environment prior to explainn. If you encounter **ERROR: No matching distribution** type of errors, try to first install the following libraries:
+Note that torch should be installed in the environment prior to explainn. If you encounter **ERROR: No matching distribution** type of errors, try to install the following libraries first:
 
 ```
 numpy==1.21.6
