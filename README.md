@@ -24,7 +24,7 @@ matplotlib==3.5.2
 
 ## Example of training an ExplaiNN model on TF binding data
 
-Here I give an example of how one can train and interpret an ExplaiNN model on predicting the binding of 3 TFs: FOXA1, MAX, and JUND.
+Here I give an example of how one can train and interpret an ExplaiNN model on predicting the binding of 3 TFs: FOXA1, MAX, and JUND. The dataset can be found in the data folder of this repo (**data/tf_peaks_TEST_sparse_Remap.h5**). 
 
 ### Initialize the model
 
