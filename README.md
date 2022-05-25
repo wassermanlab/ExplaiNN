@@ -38,6 +38,7 @@ from explainn import test
 from explainn import interpretation
 
 import torch
+import os
 from torch import nn
 from sklearn.metrics import average_precision_score
 from sklearn import metrics
@@ -66,7 +67,11 @@ input_length = 200
 num_classes = len(target_labels)
 filter_size = 19
 
+
 model = networks.ExplaiNN(num_cnns, input_length, num_classes, filter_size).to(device)
+
+criterion = nn.BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 ```
 
 ### Train the model
@@ -74,6 +79,9 @@ model = networks.ExplaiNN(num_cnns, input_length, num_classes, filter_size).to(d
 Code for training the model
 
 ```python
+os.makedirs("Output_weights")
+weights_folder = "Output_weights"
+
 model, train_error, test_error = train.train_explainn(dataloaders['train'],
                                                 dataloaders['valid'], model,
                                                 device, criterion, optimizer, num_epochs,
