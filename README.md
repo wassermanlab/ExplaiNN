@@ -4,6 +4,8 @@
 
 ExplaiNN is an adaptation of neural additive models ([NAMs](https://arxiv.org/abs/2004.13912)) for genomic tasks wherein predictions are computed as a linear combination of multiple independent CNNs, each consisting of a single convolutional filter and fully connected layers. This approach brings together the expressivity of CNNs with the interpretability of linear models, providing global (cell state level) as well as local (individual sequence level) insights of the biological processes studied.
 
+ExplaiNN can be found with the following link: [biorxiv manuscript](https://www.biorxiv.org/content/10.1101/2022.05.20.492818v1).
+
 ## Installation
 
 Explainn library is available on pip and can be installed with:
