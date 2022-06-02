@@ -254,6 +254,6 @@ plt.show()
 
 <img src="Figures\importance_TF.png" style="zoom:55%;" />
 
-#### Execution time of ExplaiNN
+#### Execution time
 
 ExplaiNN's execution times is subject to **1)** the size of the training dataset and **2)** the number of units used. For an approximation to execution times please refer to [Figure 2D](https://www.biorxiv.org/content/biorxiv/early/2022/05/25/2022.05.20.492818/F2.large.jpg).
