@@ -24,6 +24,8 @@ pandas==1.3.5
 matplotlib==3.5.2
 ```
 
+A normal successful installation should finish in a few minutes.
+
 ## Example of training an ExplaiNN model on TF binding data
 
 Here I give an example of how one can train and interpret an ExplaiNN model on predicting the binding of 3 TFs: FOXA1, MAX, and JUND. The dataset can be found [here](https://drive.google.com/drive/folders/1tFWWTCUoE2Jg0zrMvKKtTqEBuwkkJ1bl). 
@@ -251,3 +253,7 @@ plt.show()
 ```
 
 <img src="Figures\importance_TF.png" style="zoom:55%;" />
+
+#### Execution time of ExplaiNN
+
+ExplaiNN's execution times is subject to **1)** the size of the training dataset and **2)** the number of units used. For an approximation to execution times please refer to [Figure 2D](https://www.biorxiv.org/content/biorxiv/early/2022/05/25/2022.05.20.492818/F2.large.jpg).
