@@ -35,34 +35,38 @@ Here I give an example of how one can train and interpret an ExplaiNN model on p
 Imports:
 
 ```python
+from matplotlib import pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+import seaborn as sns
+from sklearn.metrics import average_precision_score
+from sklearn import metrics
+import torch
+from torch import nn
+
 from explainn import tools
 from explainn import networks
 from explainn import train
 from explainn import test
 from explainn import interpretation
-
-import torch
-import os
-from torch import nn
-from sklearn.metrics import average_precision_score
-from sklearn import metrics
-from matplotlib import pyplot as plt
-import pandas as pd
-import seaborn as sns
 ```
 
 Model and parameter initialization:
 
 ```python
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Hyper parameters
 num_epochs = 15
 batch_size = 128
 learning_rate = 0.001
 
-dataloaders, target_labels, train_out = tools.load_datas("data/tf_peaks_TEST_sparse_Remap.h5", batch_size,
-                                                         0, True)
+h5_file = "./data/test/tf_peaks_TEST_sparse_Remap.h5"
+dataloaders, target_labels, train_out = tools.load_datas(h5_file,
+                                                         batch_size,
+                                                         0,
+                                                         True)
 
 target_labels = [i.decode("utf-8") for i in target_labels]
 
@@ -83,16 +87,24 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 Code for training the model
 
 ```python
-os.makedirs("Output_weights")
-weights_folder = "Output_weights"
+weights_folder = "./data/test/weights"
+os.makedirs(weights_folder)
 
-model, train_error, test_error = train.train_explainn(dataloaders['train'],
-                                                dataloaders['valid'], model,
-                                                device, criterion, optimizer, num_epochs,
-                                                weights_folder, name_ind, verbose=True,
-                                                trim_weights=False) 
+model, train_error, test_error = train.train_explainn(dataloaders["train"],
+                                                      dataloaders["valid"],
+                                                      model,
+                                                      device,
+                                                      criterion,
+                                                      optimizer,
+                                                      num_epochs,
+                                                      weights_folder,
+                                                      name_ind="",
+                                                      verbose=True,
+                                                      trim_weights=False,
+                                                      checkpoint=0,
+                                                      patience=0)
 
-showPlot(train_error, test_error, "Loss trend", "Loss")
+tools.showPlot(train_error, test_error, "Loss trend", "Loss")
 ```
 
 <img src="Figures\example_train.png" style="zoom:100%;" />
@@ -100,9 +112,9 @@ showPlot(train_error, test_error, "Loss trend", "Loss")
 ### Testing the model
 
 ```python
-model.load_state_dict(torch.load("checkpoints/model_epoch_9_.pth"))
+model.load_state_dict(torch.load(f"{weights_folder}/{os.listdir(weights_folder)[0]}"))
 
-labels_E, outputs_E = test.run_test(model, dataloaders['test'], device)
+labels_E, outputs_E = test.run_test(model, dataloaders["test"], device)
 pr_rec = average_precision_score(labels_E, outputs_E)
 
 no_skill_probs = [0 for _ in range(len(labels_E[:, 0]))]
@@ -141,10 +153,14 @@ print(roc_aucs)
 Visualizing filters
 
 ```python
-dataset, data_inp, data_out =tools.load_single_data("data/tf_peaks_TEST_sparse_Remap.h5", 
-                                                     batch_size, 0, False)
+dataset, data_inp, data_out = tools.load_single_data(h5_file,
+                                                     batch_size,
+                                                     0,
+                                                     False)
 
-predictions, labels = interpretation.get_explainn_predictions(dataset, model, device,
+predictions, labels = interpretation.get_explainn_predictions(dataset,
+                                                              model,
+                                                              device,
                                                               isSigmoid=True)
 
 # only well predicted sequences
@@ -157,18 +173,49 @@ data_out = data_out[idx, :]
 
 dataset = torch.utils.data.TensorDataset(data_inp, data_out)
 data_loader = torch.utils.data.DataLoader(dataset=dataset,
-                                          batch_size=batch_size, shuffle=False,
-                                                  num_workers=0)
+                                          batch_size=batch_size,
+                                          shuffle=False,
+                                          num_workers=0)
 
 activations = interpretation.get_explainn_unit_activations(data_loader, model, device)
-pwms = interpretation.get_pwms_explainn(activations, data_inp, data_out, filter_size)
-interpretation.pwm_to_meme(pwms, "data/explainn_filters.meme")
+pwms = interpretation.get_pwms_explainn(activations, data_inp, filter_size)
+meme_file = "./data/test/explainn_filters.meme"
+interpretation.pwm_to_meme(pwms, meme_file)
+```
+
+```
+100%|████████████████████| 330/330 [00:02<00:00, 154.73it/s]
+100%|████████████████████| 100/100 [00:15<00:00,  6.61it/s]
 ```
 
 Tomtom annotation:
 
-```bash
-./../../meme-5.3.3/src/tomtom -oc MAX_JUND_FOXA1_tomtom explainn_filters.meme ../../tomtom_results/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme.txt
+```python
+tomtom_folder = "./data/test/MAX_JUND_FOXA1_tomtom"
+jaspar_meme = "./data/JASPAR/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme.txt"
+os.system(f"tomtom -oc {tomtom_folder} {meme_file} {jaspar_meme}")
+```
+
+```
+Processing query 1 out of 100 
+# Computing q-values.
+#   Estimating pi_0 from all 1492 observed p-values.
+#   Estimating pi_0.
+# Minimal pi_zero = 0.911676
+#   Estimated pi_0=0.912805
+Processing query 2 out of 100 
+# Computing q-values.
+#   Estimating pi_0 from all 1492 observed p-values.
+#   Estimating pi_0.
+# Minimal pi_zero = 1.003
+#   Estimated pi_0=1
+Processing query 3 out of 100 
+# Computing q-values.
+#   Estimating pi_0 from all 1492 observed p-values.
+#   Estimating pi_0.
+# Minimal pi_zero = 0.934918
+#   Estimated pi_0=0.934918
+...
 ```
 
 #### Output layer weights visualization
@@ -176,21 +223,20 @@ Tomtom annotation:
 Reading the tomtom's annotation:
 
 ```python
-tomtom_results = pd.read_csv("data/MAX_JUND_FOXA1_tomtom/tomtom.tsv",
-                                        sep="\t",comment="#")
+tomtom_results = pd.read_table(f"{tomtom_folder}/tomtom.tsv", comment="#")
 
-filters_with_min_q = tomtom_results.groupby('Query_ID').min()["q-value"]
+filters_with_min_q = tomtom_results.groupby("Query_ID").min()["q-value"]
 
 tomtom_results = tomtom_results[["Target_ID", "Query_ID", "q-value"]]
 tomtom_results = tomtom_results[tomtom_results["q-value"]<0.05]
 
-cisbp_motifs = {}
-with open("data/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme.txt") as f:
+jaspar_motifs = {}
+with open(jaspar_meme) as f:
     for line in f:
         if "MOTIF" in line:
             motif = line.strip().split()[-1]
             name_m = line.strip().split()[-2]
-            cisbp_motifs[name_m] = motif
+            jaspar_motifs[name_m] = motif
 
 filters = tomtom_results["Query_ID"].unique()
 annotation = {}
@@ -199,7 +245,7 @@ for f in filters:
     target_id = t["Target_ID"]
     if len(target_id) > 5:
         target_id = target_id[:5]
-    ann = "/".join([cisbp_motifs[i] for i in target_id.values])
+    ann = "/".join([jaspar_motifs[i] for i in target_id.values])
     annotation[f] = ann
 
 annotation = pd.Series(annotation)
@@ -221,10 +267,14 @@ weight_df = weight_df[[i for i in weight_df.columns if not i.startswith("filter"
 
 Visualizing the weights:
 
-```
+```python
 plt.figure(figsize=(15, 10))
-sns.clustermap(weight_df, cmap=sns.diverging_palette(145, 10, s=60, as_cmap=True),
-               row_cluster=False, figsize=(30, 20), vmax=0.5, vmin=-0.5)
+sns.clustermap(weight_df,
+               cmap=sns.diverging_palette(145, 10, s=60, as_cmap=True),
+               row_cluster=False,
+               figsize=(30, 20),
+               vmax=0.5,
+               vmin=-0.5)
 plt.show()
 ```
 
@@ -232,14 +282,18 @@ plt.show()
 
 #### Individual unit importance
 
-Visualizing one of the MYC/MAX filters (unit #67):
+Visualizing one of the MYC/MAX filters (unit #57):
 
 ```python
 unit_outputs = interpretation.get_explainn_unit_outputs(data_loader, model, device)
 
-unit_importance = interpretation.get_specific_unit_importance(activations, model, unit_outputs, 67, target_labels)
+unit_importance = interpretation.get_specific_unit_importance(activations,
+                                                              model,
+                                                              unit_outputs,
+                                                              57,
+                                                              target_labels)
 
-filter_key = "filter"+str(67)
+filter_key = "filter"+str(57)
 title = annotation[filter_key] if filter_key in annotation.index else filter_key
 fig, ax = plt.subplots()
 datas = [filt_dat for filt_dat in unit_importance]

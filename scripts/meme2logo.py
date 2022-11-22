@@ -8,12 +8,11 @@ import os
 import pandas as pd
 import re
 import sys
-sys.path.insert(0, os.path.dirname(sys.argv[0]))
 from tqdm import tqdm
 bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
 from jaspar2logo import _get_figure
-from pwm_scoring import _get_PWMs
+from meme2scores import _get_PWMs
 from utils import get_file_handle
 
 CONTEXT_SETTINGS = {
