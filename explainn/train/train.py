@@ -46,7 +46,7 @@ def train_explainn(train_loader, test_loader, model, device, criterion,
     :param train_loader: pytorch DataLoader, train data
     :param test_loader: pytorch DataLoader, validation data
     :param model: ExplaiNN model
-    :param device: current available device ('cuda:0' or 'cpu')
+    :param device: current available device ("cuda:0" or "cpu")
     :param criterion: objective (loss) function to use (e.g. MSELoss)
     :param optimizer: pytorch Optimizer (e.g. SGD)
     :param num_epochs: int, number of epochs to train the model
@@ -56,7 +56,8 @@ def train_explainn(train_loader, test_loader, model, device, criterion,
     :param trim_weights: boolean, if True, makes output layer weights non-negative
     :param checkpoint: int, how often to save checkpoints (e.g. 1 means that the model will be saved after each epoch;
                        0 that only the best model will be saved)
-    :param patience: int, number of epochs to wait before stopping training if validation loss does not improve
+    :param patience: int, number of epochs to wait before stopping training if validation loss does not improve;
+                     if 0, this parameter is ignored
     :return: tuple:
                     trained ExplaiNN model,
                     list, train losses,
