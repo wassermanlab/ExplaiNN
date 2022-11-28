@@ -1,6 +1,6 @@
 # ExplaiNN
 
-<img src="Figures\ExplaiNN.png" style="zoom:55%;" />
+<img src="data\figs\ExplaiNN.png" style="zoom:55%;" />
 
 ExplaiNN is an adaptation of neural additive models ([NAMs](https://arxiv.org/abs/2004.13912)) for genomic tasks wherein predictions are computed as a linear combination of multiple independent CNNs, each consisting of a single convolutional filter and fully connected layers. This approach brings together the expressivity of CNNs with the interpretability of linear models, providing global (cell state level) as well as local (individual sequence level) insights of the biological processes studied.
 
@@ -107,7 +107,7 @@ model, train_error, test_error = train.train_explainn(dataloaders["train"],
 tools.showPlot(train_error, test_error, "Loss trend", "Loss")
 ```
 
-<img src="Figures\example_train.png" style="zoom:100%;" />
+<img src="data\test\figs\example_train.png" style="zoom:100%;" />
 
 ### Testing the model
 
@@ -278,7 +278,7 @@ sns.clustermap(weight_df,
 plt.show()
 ```
 
-<img src="Figures\weights_TF.png" style="zoom:55%;" />
+<img src="data\test\figs\weights_TF.png" style="zoom:55%;" />
 
 #### Individual unit importance
 
@@ -306,7 +306,7 @@ plt.xticks(rotation=90)
 plt.show()
 ```
 
-<img src="Figures\importance_TF.png" style="zoom:55%;" />
+<img src="data\test\figs\importance_TF.png" style="zoom:55%;" />
 
 #### Execution time
 

@@ -13,8 +13,6 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
                                 os.pardir))
 import time
 import torch
-from tqdm import tqdm
-bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
 from explainn.train.train import train_explainn
 from explainn.models.networks import ExplaiNN
