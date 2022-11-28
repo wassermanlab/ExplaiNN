@@ -3,20 +3,26 @@
 PARSERS_DIR=../../scripts/parsers
 
 # HT-SELEX
-${PARSERS_DIR}/fastq2explainn.py -o ./HT-SELEX \
-    --splits 80 20 0 \
-    -f1 ./HT-SELEX/Cycle1/ERR1002403_1.fastq.gz \
-    -f1 ./HT-SELEX/Cycle2/ERR1002405_1.fastq.gz \
-    -f1 ./HT-SELEX/Cycle3/ERR1002407_1.fastq.gz \
-    -f1 ./HT-SELEX/Cycle4/ERR1002409_1.fastq.gz
+if [ ! -f ./HT-SELEX/train.tsv.gz ]; then
+    ${PARSERS_DIR}/fastq2explainn.py -o ./HT-SELEX \
+        --splits 80 20 0 \
+        -f1 ./HT-SELEX/Cycle1/ERR1002403_1.fastq.gz \
+        -f1 ./HT-SELEX/Cycle2/ERR1002405_1.fastq.gz \
+        -f1 ./HT-SELEX/Cycle3/ERR1002407_1.fastq.gz \
+        -f1 ./HT-SELEX/Cycle4/ERR1002409_1.fastq.gz
+fi
 
 # PBM
-${PARSERS_DIR}/pbm2explainn.py -o ./PBM -q \
-    --splits 100 0 0 \
-    ./PBM/GSM1291450_pTH5460_HK_8mer_1598.raw.txt.gz
-${PARSERS_DIR}/pbm2explainn.py -o ./PBM -q \
-    --splits 0 100 0 \
-    ./PBM/GSM1291451_pTH5460_ME_8mer_373.raw.txt.gz
+if [ ! -f ./PBM/train.tsv.gz ]; then
+    ${PARSERS_DIR}/pbm2explainn.py -o ./PBM -q \
+        --splits 100 0 0 \
+        ./PBM/GSM1291450_pTH5460_HK_8mer_1598.raw.txt.gz
+fi
+if [ ! -f ./PBM/validation.tsv.gz ]; then
+    ${PARSERS_DIR}/pbm2explainn.py -o ./PBM -q \
+        --splits 0 100 0 \
+        ./PBM/GSM1291451_pTH5460_ME_8mer_373.raw.txt.gz
+fi
 
 # ReMap
 GENOME=../genomes/hg38/hg38.fa
@@ -28,9 +34,11 @@ if [ ! -f ./ReMap/CEBPB.fa ]; then
     bedtools getfasta -fi ${GENOME} -fo ./ReMap/${TF}.fa \
         -bed ./ReMap/${TF}_201bp.bed
 fi
-${PARSERS_DIR}/fasta2explainn.py -o ./ReMap/ -p ${TF} \
-    --splits 80 20 0 \
-    ./ReMap/${TF}.fa
+if [ ! -f ./ReMap/${TF}.train.tsv.gz ]; then
+    ${PARSERS_DIR}/fasta2explainn.py -o ./ReMap/ -p ${TF} \
+        --splits 80 20 0 \
+        ./ReMap/${TF}.fa
+fi
 # 2) negative sequences = subsampled open, unbound regions
 if [ ! -f ./ReMap/ATAC-seq_nov.fa ]; then
     bedtools subtract -a ENCODE/ENCFF735UWS.bed.gz \
@@ -45,9 +53,12 @@ if [ ! -f ./ReMap/${TF}+ATAC-seq_nov.json.gz ]; then
         ./ReMap/ATAC-seq_nov.fa
     gzip ./ReMap/${TF}+ATAC-seq_nov.json
 fi
-${PARSERS_DIR}/json2explainn.py -o ./ReMap/ -p ${TF}+ATAC-seq_nov \
-    --splits 80 20 0 \
-    ./ReMap/${TF}+ATAC-seq_nov.json.gz
+if [ ! -f ./ReMap/${TF}+ATAC-seq_nov.train.tsv.gz ]; then
+    ${PARSERS_DIR}/json2explainn.py -o ./ReMap/ -p ${TF}+ATAC-seq_nov \
+        --splits 80 20 0 \
+        ./ReMap/${TF}+ATAC-seq_nov.json.gz
+fi
+
 # TF="CTCF"
 # if [ ! -f ./ReMap/${TF}.fa ]; then
 #     zless ./ReMap/ENCSR000DPF.CTCF.A-549.bed.gz | \
@@ -109,8 +120,10 @@ ${PARSERS_DIR}/json2explainn.py -o ./ReMap/ -p ${TF}+ATAC-seq_nov \
 # i.e. GATA3 JSON
 
 # SMiLE-seq
-${PARSERS_DIR}/fastq2explainn.py -o ./SMiLE-seq \
-    --clip-left 7 \
-    --clip-right 64 \
-    --splits 80 20 0 \
-    -f1 ./SMiLE-seq/SRR3405054_1.fastq.gz
+if [ ! -f ./SMiLE-seq/train.tsv.gz ]; then
+    ${PARSERS_DIR}/fastq2explainn.py -o ./SMiLE-seq \
+        --clip-left 7 \
+        --clip-right 64 \
+        --splits 80 20 0 \
+        -f1 ./SMiLE-seq/SRR3405054_1.fastq.gz
+fi
