@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Create conda environment
-conda create -y -n explainn2 -c pytorch -c conda-forge -c bioconda \
+conda create -y -n explainn -c pytorch -c conda-forge -c bioconda \
     bedops \
     biasaway \
     biopython \
@@ -21,13 +21,3 @@ conda create -y -n explainn2 -c pytorch -c conda-forge -c bioconda \
     scikit-learn \
     sra-tools=3.0.0 \
     tqdm
-
-# Activate conda environment
-conda activate explainn
-
-# # Download MEME
-# URL=https://anaconda.org/bioconda/meme/5.4.1/download/linux-64
-# FILE=meme-5.4.1-py310pl5321hb021246_2.tar.bz2
-# wget ${URL}/${FILE}
-# conda install ${FILE}
-# rm ${FILE}
