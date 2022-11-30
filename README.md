@@ -28,7 +28,7 @@ A normal successful installation should finish in a few minutes.
 
 ## Example of training an ExplaiNN model on TF binding data
 
-Here I give an example of how one can train and interpret an ExplaiNN model on predicting the binding of 3 TFs: FOXA1, MAX, and JUND. The dataset can be found [here](https://drive.google.com/drive/folders/1tFWWTCUoE2Jg0zrMvKKtTqEBuwkkJ1bl). 
+Here we provide an example of how to train and interpret an ExplaiNN model for predicting the binding of the TFs FOXA1, MAX, and JUND. The dataset can be found [here](https://drive.google.com/drive/folders/1tFWWTCUoE2Jg0zrMvKKtTqEBuwkkJ1bl). 
 
 ### Initialize the model
 
@@ -63,6 +63,9 @@ batch_size = 128
 learning_rate = 0.001
 
 h5_file = "./data/test/tf_peaks_TEST_sparse_Remap.h5"
+if not os.path.exists(h5_file):
+    os.system(f"gunzip {h5_file}")
+
 dataloaders, target_labels, train_out = tools.load_datas(h5_file,
                                                          batch_size,
                                                          0,
@@ -88,7 +91,8 @@ Code for training the model
 
 ```python
 weights_folder = "./data/test/weights"
-os.makedirs(weights_folder)
+if not os.path.exists(weights_folder):
+    os.makedirs(weights_folder)
 
 model, train_error, test_error = train.train_explainn(dataloaders["train"],
                                                       dataloaders["valid"],
@@ -105,6 +109,20 @@ model, train_error, test_error = train.train_explainn(dataloaders["train"],
                                                       patience=0)
 
 tools.showPlot(train_error, test_error, "Loss trend", "Loss")
+```
+
+```
+Epoch [1], Current Train Loss: 0.59987, Current Val Loss: 0.56369
+Epoch [2], Current Train Loss: 0.54444, Current Val Loss: 0.53805
+Epoch [3], Current Train Loss: 0.52748, Current Val Loss: 0.53336
+Epoch [4], Current Train Loss: 0.51762, Current Val Loss: 0.53094
+Epoch [5], Current Train Loss: 0.50993, Current Val Loss: 0.53307
+Epoch [6], Current Train Loss: 0.50374, Current Val Loss: 0.53503
+Epoch [7], Current Train Loss: 0.49772, Current Val Loss: 0.53951
+Epoch [8], Current Train Loss: 0.49197, Current Val Loss: 0.54223
+Epoch [9], Current Train Loss: 0.48682, Current Val Loss: 0.54598
+Epoch [10], Current Train Loss: 0.48281, Current Val Loss: 0.54929
+...
 ```
 
 <img src="data\test\figs\example_train.png" style="zoom:100%;" />
@@ -209,12 +227,6 @@ Processing query 2 out of 100
 #   Estimating pi_0.
 # Minimal pi_zero = 1.003
 #   Estimated pi_0=1
-Processing query 3 out of 100 
-# Computing q-values.
-#   Estimating pi_0 from all 1492 observed p-values.
-#   Estimating pi_0.
-# Minimal pi_zero = 0.934918
-#   Estimated pi_0=0.934918
 ...
 ```
 
@@ -261,15 +273,14 @@ for i in annotation.keys():
     filters[int(i.split("filter")[-1])] = annotation[i]
 
 weight_df = pd.DataFrame(weights, index=target_labels, columns=filters)
-# focusing on annotated filters only
-weight_df = weight_df[[i for i in weight_df.columns if not i.startswith("filter")]]
 ```
 
 Visualizing the weights:
 
 ```python
 plt.figure(figsize=(15, 10))
-sns.clustermap(weight_df,
+# focus on annotated filters only
+sns.clustermap(weight_df[[i for i in weight_df.columns if not i.startswith("filter")]],
                cmap=sns.diverging_palette(145, 10, s=60, as_cmap=True),
                row_cluster=False,
                figsize=(30, 20),
@@ -282,15 +293,17 @@ plt.show()
 
 #### Individual unit importance
 
-Visualizing one of the MYC/MAX filters (unit #57):
+Visualizing the MYC/MAX filter with the largest weight:
 
 ```python
 unit_outputs = interpretation.get_explainn_unit_outputs(data_loader, model, device)
 
+best_filters = weight_df.idxmax(axis="columns")
+
 unit_importance = interpretation.get_specific_unit_importance(activations,
                                                               model,
                                                               unit_outputs,
-                                                              57,
+                                                              weight_df.columns.get_loc(best_filters["MAX"]),
                                                               target_labels)
 
 filter_key = "filter"+str(57)
