@@ -62,9 +62,9 @@ num_epochs = 15
 batch_size = 128
 learning_rate = 0.001
 
-h5_file = "./data/test/tf_peaks_TEST_sparse_Remap.h5"
+h5_file = "../data/test/tf_peaks_TEST_sparse_Remap.h5"
 if not os.path.exists(h5_file):
-    os.system(f"gunzip {h5_file}")
+    os.system(f"zless {h5_file}.gz > {h5_file}")
 
 dataloaders, target_labels, train_out = tools.load_datas(h5_file,
                                                          batch_size,
