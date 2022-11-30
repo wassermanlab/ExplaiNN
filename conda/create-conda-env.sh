@@ -14,6 +14,7 @@ conda create -y -n explainn -c pytorch -c conda-forge -c bioconda \
     jupyterlab \
     logomaker \
     matplotlib \
+    meme=5.4.1 \
     numpy \
     pandas \
     parallel-fastq-dump \
