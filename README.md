@@ -299,14 +299,15 @@ Visualizing the MYC/MAX filter with the largest weight:
 unit_outputs = interpretation.get_explainn_unit_outputs(data_loader, model, device)
 
 best_filters = weight_df.idxmax(axis="columns")
+best_myc_max_filter = weight_df.columns.get_loc(best_filters["MAX"])
 
 unit_importance = interpretation.get_specific_unit_importance(activations,
                                                               model,
                                                               unit_outputs,
-                                                              weight_df.columns.get_loc(best_filters["MAX"]),
+                                                              best_myc_max_filter,
                                                               target_labels)
 
-filter_key = "filter"+str(57)
+filter_key = f"filter{best_myc_max_filter}"
 title = annotation[filter_key] if filter_key in annotation.index else filter_key
 fig, ax = plt.subplots()
 datas = [filt_dat for filt_dat in unit_importance]
