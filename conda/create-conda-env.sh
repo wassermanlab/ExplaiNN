@@ -3,9 +3,11 @@
 if [ ${HOSTNAME} == "gpurtx-2" ]; then
     PYTORCH="pytorch=1.12.1 torchvision=0.13.1 torchaudio=0.12.1"
     CUDATOOLKIT="cudatoolkit=11.3"
+    PYTHON="python=3.9.12"
 elif [ ${HOSTNAME} == "GPURTX" ]; then
-    PYTORCH="pytorch=1.7.1 torchvision=0.8.2 torchaudio=0.7.2"
-    CUDATOOLKIT="cudatoolkit=11.0"
+    PYTORCH="pytorch=1.9.0 torchvision=0.10.0 torchaudio=0.9.0"
+    CUDATOOLKIT="cudatoolkit=11.0.3"
+    PYTHON="python=3.9.6"
 else
     continue
 fi
