@@ -7,7 +7,7 @@ elif [ ${HOSTNAME} == "GPURTX" ]; then
     PYTORCH="pytorch=1.7.1 torchvision=0.8.2 torchaudio=0.7.2"
     CUDATOOLKIT="cudatoolkit=11.0"
 else
-    # i.e. pass
+    continue
 fi
 
 # Create conda environment
