@@ -30,7 +30,7 @@ conda create -y -n explainn -c pytorch -c conda-forge -c bioconda \
     pandas \
     parallel-fastq-dump \
     pybedtools \
-    python=3.9.12 \
+    ${PYTHON} \
     scikit-learn \
     sra-tools=3.0.0 \
     tqdm
