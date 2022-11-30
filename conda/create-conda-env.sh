@@ -11,6 +11,7 @@ conda create -y -n explainn -c pytorch -c conda-forge -c bioconda \
     genomepy \
     h5py \
     joblib=1.1.0 \
+    jupyterlab \
     logomaker \
     matplotlib \
     numpy \
