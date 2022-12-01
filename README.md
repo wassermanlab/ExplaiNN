@@ -62,7 +62,7 @@ num_epochs = 15
 batch_size = 128
 learning_rate = 0.001
 
-h5_file = "../data/test/tf_peaks_TEST_sparse_Remap.h5"
+h5_file = "./data/test/tf_peaks_TEST_sparse_Remap.h5"
 if not os.path.exists(h5_file):
     os.system(f"zless {h5_file}.gz > {h5_file}")
 
@@ -209,9 +209,9 @@ interpretation.pwm_to_meme(pwms, meme_file)
 Tomtom annotation:
 
 ```python
-tomtom_folder = "./data/test/MAX_JUND_FOXA1_tomtom"
+tomtom_file = "./data/test/MAX_JUND_FOXA1_tomtom.tsv"
 jaspar_meme = "./data/JASPAR/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme.txt"
-os.system(f"tomtom -oc {tomtom_folder} {meme_file} {jaspar_meme}")
+os.system(f"tomtom --text {meme_file} {jaspar_meme} > {tomtom_file}")
 ```
 
 ```
@@ -235,7 +235,7 @@ Processing query 2 out of 100
 Reading the tomtom's annotation:
 
 ```python
-tomtom_results = pd.read_table(f"{tomtom_folder}/tomtom.tsv", comment="#")
+tomtom_results = pd.read_table(f"{tomtom_file}", comment="#")
 
 filters_with_min_q = tomtom_results.groupby("Query_ID").min()["q-value"]
 
