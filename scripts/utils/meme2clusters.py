@@ -3,6 +3,7 @@
 import click
 from functools import partial
 from fastcluster import linkage
+import importlib
 import json
 from multiprocessing import Pool
 import numpy as np
@@ -20,7 +21,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from explainn.interpretation.interpretation import pwm_to_meme
-from pwm_scoring import _get_PWMs
+pwmscoring = importlib.import_module("pwm-scoring")
 from utils import get_file_handle
 
 CONTEXT_SETTINGS = {
