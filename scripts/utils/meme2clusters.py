@@ -3,7 +3,6 @@
 import click
 from functools import partial
 from fastcluster import linkage
-import importlib
 import json
 from multiprocessing import Pool
 import numpy as np
@@ -11,8 +10,6 @@ import os
 import pandas as pd
 from scipy.cluster.hierarchy import fcluster
 import sys
-sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
-                                os.pardir))
 import subprocess as sp
 import time
 from tqdm import tqdm
@@ -21,7 +18,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from explainn.interpretation.interpretation import pwm_to_meme
-pwmscoring = importlib.import_module("pwm-scoring")
+
+# Local imports
+from pwm2scores import _get_PWMs
+sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 from utils import get_file_handle
 
 CONTEXT_SETTINGS = {

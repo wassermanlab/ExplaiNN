@@ -9,8 +9,6 @@ import numpy as np
 import os
 import pandas as pd
 import sys
-sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
-                                os.pardir))
 import subprocess as sp
 import time
 from tqdm import tqdm
@@ -18,6 +16,8 @@ bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 import warnings
 warnings.filterwarnings("ignore")
 
+# Local imports
+sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 from utils import get_file_handle
 
 CONTEXT_SETTINGS = {

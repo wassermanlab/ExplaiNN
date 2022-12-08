@@ -5,14 +5,17 @@ import numpy as np
 import os
 import pandas as pd
 import re
+import sys
 import torch
 from tqdm import tqdm
 bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
+from explainn.models.networks import PWM
+
 # Local imports
-from architectures import PWM, get_metrics
-from train import _get_seqs_labels_ids, _get_data_loader
-from utils import get_file_handle
+sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
+from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
+                   get_device)
 
 CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
