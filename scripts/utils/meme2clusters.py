@@ -196,7 +196,7 @@ def main(**args):
             if clusters_file.startswith("unclust."):
                 continue
             pwm, name = _get_PWMs(os.path.join(clusters_dir, clusters_file))
-            pwms.append(pwm[0])
+            pwms.append(np.array(pwm[0]))
             names.append(name[0])
         (names, pwms) = zip(*sorted(zip(names, pwms)))
         pwm_to_meme(pwms, meme_file, dict(list(enumerate(names))))
@@ -351,7 +351,7 @@ def _process_cluster(cluster_id, clusters, clusters_dir, tomtom_dir,
             meme_file = os.path.join(output_dir, "motifs",
                                      f"{names_str[motif_id]}.meme")
             pwm, name = _get_PWMs(meme_file)
-            pwms.append(pwm[0])
+            pwms.append(np.array(pwm[0]))
             names.append(name[0])
 
         meme_file = os.path.join(clusters_dir, "unclust.meme")
@@ -404,7 +404,8 @@ def _process_cluster(cluster_id, clusters, clusters_dir, tomtom_dir,
             meme_file = os.path.join(output_dir, "motifs",
                                     f"{names_str[motif_id]}.meme")
             pwm, _ = _get_PWMs(meme_file)
-            pwm = pwm[0]
+            pwm = np.array(pwm[0])
+
             if reverse_complement:
                 pwm = pwm[::-1,::-1]
 
