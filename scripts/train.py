@@ -6,7 +6,6 @@ import json
 import numpy as np
 import os
 import pandas as pd
-# import pickle
 import shutil
 import sys
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
@@ -164,7 +163,7 @@ CONTEXT_SETTINGS = {
     is_flag=True,
 )
 
-def main(**args):
+def cli(**args):
 
     # Start execution
     start_time = time.time()
@@ -244,7 +243,7 @@ def main(**args):
         handle = get_file_handle(f, "wt")
         handle.write(f"{seconds} seconds")
         handle.close()
-    print(f'Execution time {seconds} seconds')
+    print(f"Execution time {seconds} seconds")
 
 def _get_optimizer(optimizer, parameters, lr=0.003):
 
@@ -276,4 +275,4 @@ def _train(train_loader, test_loader, model, device, criterion, optimizer,
     df.to_csv(os.path.join(output_dir, "losses.tsv"), sep="\t")
 
 if __name__ == "__main__":
-    main()
+    cli()

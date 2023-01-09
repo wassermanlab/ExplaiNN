@@ -45,7 +45,7 @@ CONTEXT_SETTINGS = {
     show_default=True,
 )
 
-def main(**args):
+def cli(**args):
 
     # Create output dir
     if not os.path.exists(args["output_dir"]):
@@ -82,4 +82,4 @@ def _generate_logo(pwm_name, oformat="png", output_dir="./"):
                 fh.close()
 
 if __name__ == "__main__":
-    main()
+    cli()

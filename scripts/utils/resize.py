@@ -28,7 +28,7 @@ CONTEXT_SETTINGS = {
         allow_dash=True),
 )
 
-def main(**args):
+def cli(**args):
 
     # Get BED file as DataFrame
     bed = pd.read_table(args["bed_file"], names=["chrom", "start", "end"],
@@ -60,4 +60,4 @@ def main(**args):
     handle.close()
 
 if __name__ == "__main__":
-    main()
+    cli()

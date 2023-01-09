@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
                                 os.pardir))
 import subprocess as sp
 
-# Locals
 from utils import click_validator, get_file_handle, get_data_splits
 
 CONTEXT_SETTINGS = {
@@ -76,7 +75,7 @@ def validate_click_options(context):
     show_default=True
 )
 
-def main(**args):
+def cli(**args):
 
     # Create output dir
     if not os.path.exists(args["output_dir"]):
@@ -177,4 +176,4 @@ def _to_ExplaiNN(fasta_files, dummy_dir="/tmp/", non_standard=None,
             compression="gzip")
 
 if __name__ == "__main__":
-    main()
+    cli()

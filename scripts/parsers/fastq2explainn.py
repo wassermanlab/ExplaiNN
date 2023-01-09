@@ -99,7 +99,7 @@ def validate_click_options(context):
     show_default=True
 )
 
-def main(**args):
+def cli(**args):
 
     # Create output dir
     if not os.path.exists(args["output_dir"]):
@@ -195,4 +195,4 @@ def _to_ExplaiNN(clip_left=None, clip_right=None, fastq_1=[], fastq_2=[],
                     compression="gzip")
 
 if __name__ == "__main__":
-    main()
+    cli()

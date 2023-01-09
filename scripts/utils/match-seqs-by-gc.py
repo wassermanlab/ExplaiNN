@@ -2,7 +2,7 @@
 
 from Bio import SeqIO
 from Bio.Seq import Seq
-from Bio.SeqUtils import GC
+from Bio.SeqUtils import gc_fraction
 import click
 import copy
 import importlib
@@ -55,7 +55,7 @@ CONTEXT_SETTINGS = {
     show_default=True
 )
 
-def main(**args):
+def cli(**args):
 
     # Group sequences based on their %GC content
     gc_groups = _get_GC_groups(args["fasta_file"], args["dna"],
@@ -98,7 +98,7 @@ def _get_GC_groups(fasta_files, dna="lowercase", transform=None):
         # For each SeqRecord...
         for record in SeqIO.parse(fasta_file, "fasta"):
 
-            gc = round(GC(record.seq))
+            gc = round(gc_fraction(record.seq))
 
             if transform:
 
@@ -161,4 +161,4 @@ def _match_seqs_by_GC(gc_groups, random_seed=1714):
     return(matched_seqs)
 
 if __name__ == "__main__":
-    main()
+    cli()

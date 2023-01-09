@@ -17,7 +17,6 @@ import torch.nn as nn
 from tqdm import tqdm
 bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
-#from architectures import PWM, get_metrics
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device)
 

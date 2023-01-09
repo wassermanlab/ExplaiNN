@@ -54,7 +54,7 @@ CONTEXT_SETTINGS = {
     show_default=True
 )
 
-def main(**args):
+def cli(**args):
 
     # Group sequences based on their %GC content
     gc_groups = lib._get_GC_groups([args["fasta_file"]], args["dna"],
@@ -106,4 +106,4 @@ def _subsample_seqs_by_GC(matched_seqs, random_seed=1714, subsample=1000):
     return(sampled_seqs[:subsample])
 
 if __name__ == "__main__":
-    main()
+    cli()

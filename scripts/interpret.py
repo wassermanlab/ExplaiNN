@@ -17,13 +17,14 @@ import torch
 from tqdm import tqdm
 bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
+from explainn.models.networks import ExplaiNN
 from explainn.interpretation.interpretation import (get_explainn_predictions,
                                                     get_explainn_unit_activations,
                                                     get_explainn_unit_outputs,
                                                     get_specific_unit_importance,
                                                     get_pwms_explainn,
                                                     pwm_to_meme)
-from explainn.models.networks import ExplaiNN
+
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device)
 
@@ -103,7 +104,7 @@ CONTEXT_SETTINGS = {
     type=click.IntRange(1, 100, clamp=True),
 )
 
-def main(**args):
+def cli(**args):
 
     # Start execution
     start_time = time.time()
@@ -138,8 +139,7 @@ def main(**args):
     # Interpret  #
     ##############
 
-    # Infer input length/type, and the number of classes
-    input_length = seqs[0].shape[1]
+    # Infer input type, and the number of classes
     num_classes = labels[0].shape[0]
     if np.unique(labels[:, 0]).size == 2:
         input_type = "binary"
@@ -164,13 +164,13 @@ def main(**args):
         threshold = args["percentile_top"]
 
     # Get model
-    m = ExplaiNN(train_args["num_units"], input_length, num_classes,
-                 train_args["filter_size"], train_args["num_fc"],
+    m = ExplaiNN(train_args["num_units"], train_args["input_length"],
+                 num_classes, train_args["filter_size"], train_args["num_fc"],
                  train_args["pool_size"], train_args["pool_stride"],
                  train_args["weights_file"])
     m.load_state_dict(torch.load(args["model_file"]))
 
-    # Get well-predicted sequences
+    # Interpret
     _interpret(seqs, labels, m, device, input_type, criterion, threshold,
                train_args["filter_size"], train_args["rev_complement"],
                args["output_dir"], args["batch_size"],
@@ -184,7 +184,7 @@ def main(**args):
         handle = get_file_handle(f, "wt")
         handle.write(f"{seconds} seconds")
         handle.close()
-    print(f'Execution time {seconds} seconds')
+    print(f"Execution time {seconds} seconds")
 
 def one_hot_decode(encoded_seq):
     """Reverts a sequence's one hot encoding."""
@@ -346,4 +346,4 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
         df.to_csv(tsv_file, sep="\t", index=False)
 
 if __name__ == "__main__":
-    main()
+    cli()

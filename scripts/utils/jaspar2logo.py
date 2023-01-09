@@ -12,7 +12,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Specify font
-f = os.path.join(os.path.dirname(os.path.realpath(__file__)), "utils", "fonts",
+f = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts",
                  "Arial.ttf")
 prop = fm.FontProperties(fname=f)
 
@@ -35,7 +35,7 @@ CONTEXT_SETTINGS = {
     is_flag=True,
 )
 
-def main(**args):
+def cli(**args):
 
     # Get figure
     fig = get_figure(args["motif_file"], rc=args["rev_complement"])
@@ -82,5 +82,4 @@ def _get_figure(pwm, rc=False):
     return(fig)
 
 if __name__ == "__main__":
-
-    main()
+    cli()

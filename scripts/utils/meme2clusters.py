@@ -10,6 +10,7 @@ import os
 import pandas as pd
 from scipy.cluster.hierarchy import fcluster
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 import subprocess as sp
 import time
 from tqdm import tqdm
@@ -19,9 +20,7 @@ warnings.filterwarnings("ignore")
 
 from explainn.interpretation.interpretation import pwm_to_meme
 
-# Local imports
 from pwm2scores import _get_PWMs
-sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 from utils import get_file_handle
 
 CONTEXT_SETTINGS = {
@@ -65,7 +64,7 @@ CONTEXT_SETTINGS = {
     is_flag=True,
 )
 
-def main(**args):
+def cli(**args):
 
     # Start execution
     start_time = time.time()
@@ -435,4 +434,4 @@ def __load_Tomtom_files(motifs, tomtom_dir):
     return(pd.concat(dfs))
 
 if __name__ == "__main__":
-    main()
+    cli()

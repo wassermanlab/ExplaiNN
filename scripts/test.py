@@ -1,29 +1,23 @@
 #!/usr/bin/env python
 
-from Bio import SeqIO
-from Bio import motifs
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from collections import Counter
 import click
-import gzip
+from click_option_group import optgroup
+import json
 import numpy as np
 import os
 import pandas as pd
+from scipy.stats import pearsonr, spearmanr
+from sklearn.metrics import average_precision_score, roc_auc_score
+import sys
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
+                                os.pardir))
+import time
 import torch
-from tqdm import tqdm
-bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
-# Local imports
-from architectures import ExplaiNN, get_metrics
-from jaspar import get_figure, reformat_motif
-from sequence import rc_many
-from train import _get_seqs_labels_ids, _get_data_loader
-
-# Globals
-activations = None
-outputs = None
-predictions = None
+from explainn.interpretation.interpretation import get_explainn_predictions
+from explainn.models.networks import ExplaiNN
+from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
+                   get_device)
 
 CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
@@ -35,14 +29,18 @@ CONTEXT_SETTINGS = {
     type=click.Path(exists=True, resolve_path=True),
 )
 @click.argument(
+    "training_parameters_file",
+    type=click.Path(exists=True, resolve_path=True),
+)
+@click.argument(
     "test_file",
     type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
-    "-b", "--batch-size",
-    help="Batch size.",
+    "-c", "--cpu-threads",
+    help="Number of CPU threads to use.",
     type=int,
-    default=100,
+    default=1,
     show_default=True,
 )
 @click.option(
@@ -58,162 +56,149 @@ CONTEXT_SETTINGS = {
     show_default=True,
 )
 @click.option(
-    "-r", "--rev-complement",
-    help="Reverse complement sequences.",
+    "-t", "--time",
+    help="Return the program's running execution time in seconds.",
     is_flag=True,
 )
+@optgroup.group("Test")
+@optgroup.option(
+    "--batch-size",
+    help="Batch size.",
+    type=int,
+    default=100,
+    show_default=True,
+)
 
-def main(**args):
+def cli(**args):
 
-    # Globals
-    global activations
-    global outputs
-    global predictions
+    # Start execution
+    start_time = time.time()
+
+    # Initialize
+    if not os.path.exists(args["output_dir"]):
+        os.makedirs(args["output_dir"])
+
+    # Save exec. parameters as JSON
+    json_file = os.path.join(args["output_dir"],
+                             f"parameters-{os.path.basename(__file__)}.json")
+    handle = get_file_handle(json_file, "wt")
+    handle.write(json.dumps(args, indent=4, sort_keys=True))
+    handle.close()
 
     ##############
     # Load Data  #
     ##############
 
-    # Get data
-    seqs, labels, _ = _get_seqs_labels_ids(args["test_file"],
-        args["debugging"], args["rev_complement"])
+    # Load training parameters
+    handle = get_file_handle(args["training_parameters_file"], "rt")
+    train_args = json.load(handle)
+    handle.close()
 
-    # Get DataLoader
-    data_loader = _get_data_loader(seqs, labels, args["batch_size"])
-
-    # Load model
-    exp_model = _load_model(args["model_file"])
+    # Get training sequences and labels
+    seqs, labels, _ = get_seqs_labels_ids(args["test_file"],
+                                          args["debugging"],
+                                          False,
+                                          train_args["input_length"])
 
     ##############
     # Test       #
     ############## 
 
-    # Initialize
+    # Infer input type, and the number of classes
+    num_classes = labels[0].shape[0]
     if np.unique(labels[:, 0]).size == 2:
-        input_data = "binary"
+        input_type = "binary"
     else:
-        input_data = "linear"
+        input_type = "non-binary"
 
-    # Create output dirs
-    if not os.path.isdir(args["output_dir"]):
-        os.makedirs(args["output_dir"])
+    # Get device
+    device = get_device()
 
-    # Compute activations, outputs, and predictions
-    _compute_acts_outs_preds(exp_model, data_loader, args["output_dir"])
+    # Get model
+    m = ExplaiNN(train_args["num_units"], train_args["input_length"],
+                 num_classes, train_args["filter_size"], train_args["num_fc"],
+                 train_args["pool_size"], train_args["pool_stride"],
+                 train_args["weights_file"])
+    m.load_state_dict(torch.load(args["model_file"]))
 
-    # Save predictions
-    predictions_file = os.path.join(args["output_dir"], "predictions.npz")
-    np.savez_compressed(predictions_file, predictions)
+    # Test
+    _test(seqs, labels, m, device, input_type, train_args["filter_size"],
+          train_args["rev_complement"], args["output_dir"], args["batch_size"])
+
+    # Finish execution
+    seconds = format(time.time() - start_time, ".2f")
+    if args["time"]:
+        f = os.path.join(args["output_dir"],
+            f"time-{os.path.basename(__file__)}.txt")
+        handle = get_file_handle(f, "wt")
+        handle.write(f"{seconds} seconds")
+        handle.close()
+    print(f"Execution time {seconds} seconds")
+
+def _test(seqs, labels, model, device, input_type, filter_size,
+          rev_complement, output_dir="./", batch_size=100):
+
+    # Initialize
+    predictions = []
+    model.to(device)
+    model.eval()
+
+    # Get training DataLoader
+    data_loader = get_data_loader(seqs, labels, batch_size)
+
+    # Get rev. complement
+    if rev_complement:
+        rev_seqs = np.array([s[::-1, ::-1] for s in seqs])
+        rev_data_loader = get_data_loader(rev_seqs, labels, batch_size)
+    else:
+        rev_seqs = None
+        rev_data_loader = None
+
+    for dl in [data_loader, rev_data_loader]:
+
+        # Skip
+        if dl is None:
+            continue
+
+        # Get predictions
+        preds, labels = get_explainn_predictions(dl, model, device,
+                                                 isSigmoid=False)
+        predictions.append(preds)
+
+    # Avg. predictions from both strands
+    if len(predictions) == 2:
+        avg_predictions = np.empty(predictions[0].shape)
+        for i in range(predictions[0].shape[1]):
+            avg_predictions[:, i] = np.mean([predictions[0][:, i],
+                                            predictions[1][:, i]], axis=0)
+    else:
+        avg_predictions = predictions[0]
+    if input_type == "binary":
+        for i in range(avg_predictions.shape[1]):
+            avg_predictions[:, i] = \
+                torch.sigmoid(torch.from_numpy(avg_predictions[:, i])).numpy()
 
     # Get performance metrics
-    metrics = get_metrics(input_data=input_data)
-    tsv_file = os.path.join(args["output_dir"], "performance-metrics.tsv")
+    metrics = __get_metrics(input_data=input_type)
+    tsv_file = os.path.join(output_dir, "performance-metrics.tsv")
     if not os.path.exists(tsv_file):
         data = []
         for m in metrics:
-            p = _get_performances(predictions, labels, input_data, metrics[m],
-                args["rev_complement"])
-            data.append([m] + p)
+            data.append([m])
+            data[-1].append(metrics[m](labels, avg_predictions))
+            for i in range(labels.shape[1]):
+                data[-1].append(metrics[m](labels[:, i],
+                                           avg_predictions[:, i]))
         column_names = ["metric", "global"] + list(range(labels.shape[1]))
         df = pd.DataFrame(data, columns=column_names)
         df.to_csv(tsv_file, sep="\t", index=False)
 
-def _load_model(model_file):
+def __get_metrics(input_data="binary"):
 
-    # Initialize
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if input_data == "binary":
+        return(dict(aucROC=roc_auc_score, aucPR=average_precision_score))
 
-    # Get model
-    selene_dict = torch.load(model_file)
-    exp_model = ExplaiNN(
-        selene_dict["options"]["cnn_units"],
-        selene_dict["options"]["kernel_size"],
-        selene_dict["options"]["sequence_length"],
-        selene_dict["options"]["n_features"],
-        selene_dict["options"]["weights_file"],
-    )
-    exp_model.load_state_dict(selene_dict["state_dict"])
-    exp_model.to(device)
-    exp_model.eval()
-
-    return(exp_model)
-
-def _compute_acts_outs_preds(exp_model, data_loader, output_dir="./"):
-
-    # Initialize
-    idx = 0
-    x = len(data_loader.dataset)
-    y = exp_model._options["cnn_units"]
-    z = exp_model._options["sequence_length"] - \
-        exp_model._options["kernel_size"] + 1
-    n_features = exp_model._options["n_features"]
-    global activations
-    activations = np.zeros((x, y, z), dtype=np.float16)
-    global outputs
-    outputs = np.zeros((x, y), dtype=np.float16)
-    global predictions
-    predictions = np.zeros((x, n_features), dtype=np.float16)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    with torch.no_grad():
-        for Xs, _ in tqdm(iter(data_loader), total=len(data_loader),
-                bar_format=bar_format):
-
-            # Prepare input
-            Xs = Xs.to(device)
-            Xs = Xs.repeat(1, exp_model._options["cnn_units"], 1)
-
-            # Get outputs
-            outs = exp_model.linears(Xs)
-            outputs[idx:idx+Xs.shape[0], :] = outs.cpu().numpy()
-
-            # Get predictions
-            preds = exp_model.final(outs)
-            predictions[idx:idx+Xs.shape[0]] = preds.cpu().numpy()
-
-            # Get activations
-            activations[idx:idx+Xs.shape[0], :, :] = \
-                exp_model.linears[:3](Xs).cpu().numpy()
-
-            # Index increase
-            idx += Xs.shape[0]
-
-def _get_performances(predictions, labels, input_data, metric,
-                      rev_complement=False):
-
-    # Initialize
-    performances = []
-
-    if rev_complement:
-        fwd = __get_fwd_rev(predictions, "fwd")
-        rev = __get_fwd_rev(predictions, "rev")
-        p = np.empty(fwd.shape)
-        ys = __get_fwd_rev(labels, "fwd")
-        # Average predictions from forward and reverse strands
-        for i in range(p.shape[1]):
-            p[:, i] = np.mean([fwd[:, i], rev[:, i]], axis=0)
-            if input_data == "binary":
-                p[:, i] = torch.sigmoid(torch.from_numpy(p[:, i])).numpy()
-    else:
-        if input_data == "binary":
-            p = torch.sigmoid(torch.from_numpy(predictions)).numpy()
-        else:
-            p = predictions
-        ys = labels
-
-    # For each class...
-    performances.append(metric(ys, p))
-    for i in range(ys.shape[1]):
-        performances.append(metric(ys[:, i], p[:, i]))
-
-    return(performances)
-
-def __get_fwd_rev(arr, strand):
-
-    if strand == "fwd" or strand == "+":
-        return(arr[:len(arr)//2])
-    elif strand == "rev" or strand == "-":
-        return(arr[len(arr)//2:])
+    return(dict(Pearson=pearsonr, Spearman=spearmanr))
 
 if __name__ == "__main__":
-    main()
+    cli()

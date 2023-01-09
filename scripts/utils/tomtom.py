@@ -9,6 +9,7 @@ import numpy as np
 import os
 import pandas as pd
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 import subprocess as sp
 import time
 from tqdm import tqdm
@@ -16,8 +17,6 @@ bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 import warnings
 warnings.filterwarnings("ignore")
 
-# Local imports
-sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 from utils import get_file_handle
 
 CONTEXT_SETTINGS = {
@@ -87,7 +86,7 @@ CONTEXT_SETTINGS = {
     show_default=True,
 )
 
-def main(**args):
+def cli(**args):
 
     # Start execution
     start_time = time.time()
@@ -228,4 +227,4 @@ def _load_Tomtom_files(tomtom_dir, col_names=None):
     return(pd.concat(dfs))
 
 if __name__ == "__main__":
-    main()
+    cli()
