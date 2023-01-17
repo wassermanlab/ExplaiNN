@@ -86,7 +86,7 @@ CONTEXT_SETTINGS = {
 @optgroup.option(
     "--correlation",
     help="If the correlation between the predicted and actual sequence values is >x (e.g. multi-class regression tasks).",
-    type=click.IntRange(1, 100, clamp=True),
+    type=click.FloatRange(0, 1, clamp=True),
 )
 @optgroup.option(
     "--exact-match",
@@ -223,13 +223,10 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
         rev_seqs = None
         rev_data_loader = None
 
+    # Get predictions
     for dl in [data_loader, rev_data_loader]:
-
-        # Skip
-        if dl is None:
+        if dl is None: # skip
             continue
-
-        # Get predictions
         preds, labels = get_explainn_predictions(dl, model, device,
                                                  isSigmoid=False)
         predictions.append(preds)
@@ -249,7 +246,11 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
 
     # Get well-predicted sequences
     if criterion == "correlation":
-        pass
+        correlations = []
+        for i in range(len(avg_predictions)):
+            x = np.corrcoef(labels[i, :], avg_predictions[i, :])[0, 1]
+            correlations.append(x)
+        idx = np.argwhere(np.asarray(correlations) > threshold).squeeze()
     elif criterion == "exact_match":
         arr = np.round(avg_predictions) # round predictions
         arr = np.equal(arr, labels)
@@ -264,6 +265,10 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
         arr_1 = np.argsort(-labels.flatten())[:int(max(labels.shape)*threshold)]
         arr_2 = np.argsort(-avg_predictions.flatten())[:int(max(avg_predictions.shape)*threshold)]
         idx = np.intersect1d(arr_1, arr_2)
+    if num_well_pred_seqs:
+        rng = np.random.default_rng()
+        size = min(num_well_pred_seqs, len(idx))
+        idx = rng.choice(idx, size=size, replace=False)
 
     # Get training DataLoader
     seqs = seqs[idx]
@@ -278,16 +283,12 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
         rev_seqs = None
         rev_data_loader = None
 
+    # Get activations
     for dl in [data_loader, rev_data_loader]:
-
-        # Skip
-        if dl is None:
-            continue
-
-        # Get activations
+        if dl is None: # skip
+            continue       
         acts = get_explainn_unit_activations(dl, model, device)
         activations.append(acts)
-
     if rev_complement:
         seqs = np.concatenate((seqs, rev_seqs))
         activations = np.concatenate(activations)
@@ -311,16 +312,12 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
         df = pd.DataFrame(data, columns=column_names)
         df.to_csv(tsv_file, sep="\t", index=False)
 
+    # Get unit outputs
     for i, dl in enumerate([data_loader, rev_data_loader]):
-
-        # Skip
-        if dl is None:
-            continue
-
-        # Get unit outputs
+        if dl is None: # skip
+            continue      
         outs = get_explainn_unit_outputs(dl, model, device)
         outputs.append(outs)
-
     if rev_complement:
         outputs = np.concatenate(outputs)
     else:

@@ -4,37 +4,11 @@
 import copy
 import os
 import torch
+from torch.nn import CosineSimilarity
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
-
-# def train_explainn(train_loader, test_loader, model, device, criterion,
-#                    optimizer, num_epochs=100, weights_folder="./",
-#                    name_ind=None, verbose=False, trim_weights=False,
-#                    checkpoint=1, patience=0, save_optimizer=False):
-#     """
-#     Function to train the ExplaiNN model
-
-#     :param train_loader: pytorch DataLoader, train data
-#     :param test_loader: pytorch DataLoader, validation data
-#     :param model: ExplaiNN model
-#     :param device: current available device ('cuda:0' or 'cpu')
-#     :param criterion: objective (loss) function to use (e.g. MSELoss)
-#     :param optimizer: pytorch Optimizer (e.g. SGD)
-#     :param num_epochs: int, number of epochs to train the model
-#     :param weights_folder: string, folder where to save checkpoints
-#     :param name_ind: string, suffix name of the checkpoints
-#     :param verbose: boolean, if False, does not print the progress
-#     :param trim_weights: boolean, if True, makes output layer weights non-negative
-#     :param checkpoint: int, how often to save checkpoints (e.g. 1 means that the model will be saved after each epoch)
-#     :param patience: int, number of epochs to wait before stopping training if validation loss does not improve
-#     :param save_optimizer: boolean, if True, saves a checkpoint of the optimizer every time the model is saved
-#     :return: tuple:
-#                     trained ExplaiNN model,
-#                     list, train losses,
-#                     list, test losses
-#     """
 
 def train_explainn(train_loader, test_loader, model, device, criterion,
                    optimizer, num_epochs=100, weights_folder="./",
@@ -63,7 +37,6 @@ def train_explainn(train_loader, test_loader, model, device, criterion,
                     list, train losses,
                     list, test losses
     """
-
 
     train_error = []
     test_error = []

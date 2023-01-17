@@ -14,6 +14,7 @@ import time
 import torch
 
 from explainn.train.train import train_explainn
+from explainn.utils.tools import pearson_loss
 from explainn.models.networks import ExplaiNN
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device)
@@ -105,8 +106,8 @@ CONTEXT_SETTINGS = {
 @optgroup.group("\n  Optimizer")
 @optgroup.option(
     "--criterion",
-    help="Loss (objective) function to use. Select \"BCEWithLogitsLoss\" for binary or multi-class classification tasks (e.g. predict the binding of one or more TFs to a sequence), \"CrossEntropyLoss\" for multi-class classification tasks wherein only one solution is possible (e.g. predict the species of origin of a sequence between human, mouse or zebrafish), \"MSELoss\" for regression tasks (e.g. predict probe intensity signals), and \"PoissonNLLLoss\" for modelling count data (e.g. predict ChIP-/ATAC-seq peak signals).",
-    type=click.Choice(["BCEWithLogitsLoss", "CrossEntropyLoss", "MSELoss", "PoissonNLLLoss"], case_sensitive=False),
+    help="Loss (objective) function to use. Select \"BCEWithLogits\" for binary or multi-class classification tasks (e.g. predict the binding of one or more TFs to a sequence), \"CrossEntropy\" for multi-class classification tasks wherein only one solution is possible (e.g. predict the species of origin of a sequence between human, mouse or zebrafish), \"MSE\" for regression tasks (e.g. predict probe intensity signals), \"Pearson\" also for regression tasks (e.g. modeling accessibility across 81 cell types), and \"PoissonNLL\" for modeling count data (e.g. total number of reads at ChIP-/ATAC-seq peaks).",
+    type=click.Choice(["BCEWithLogits", "CrossEntropy", "MSE", "Pearson", "PoissonNLL"], case_sensitive=False),
     required=True
 )
 @optgroup.option(
@@ -215,13 +216,15 @@ def cli(**args):
     device = get_device()
 
     # Get criterion
-    if args["criterion"].lower() == "bcewithlogitsloss":
+    if args["criterion"].lower() == "bcewithlogits":
         criterion = torch.nn.BCEWithLogitsLoss()
-    elif args["criterion"].lower() == "crossentropyloss":
+    elif args["criterion"].lower() == "crossentropy":
         criterion = torch.nn.CrossEntropyLoss()
-    elif args["criterion"].lower() == "mseloss":
+    elif args["criterion"].lower() == "mse":
         criterion = torch.nn.MSELoss()
-    elif args["criterion"].lower() == "poissonnllloss":
+    elif args["criterion"].lower() == "pearson":
+        criterion = pearson_loss
+    elif args["criterion"].lower() == "poissonnll":
         criterion = torch.nn.PoissonNLLLoss()
 
     # Get model and optimizer

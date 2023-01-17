@@ -6,7 +6,6 @@ import json
 import numpy as np
 import os
 import pandas as pd
-from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import average_precision_score, roc_auc_score
 import sys
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
@@ -184,11 +183,11 @@ def _test(seqs, labels, model, device, input_type, filter_size,
     if not os.path.exists(tsv_file):
         data = []
         for m in metrics:
-            data.append([m])
+            data.append([m])            
             data[-1].append(metrics[m](labels, avg_predictions))
             for i in range(labels.shape[1]):
                 data[-1].append(metrics[m](labels[:, i],
-                                           avg_predictions[:, i]))
+                                            avg_predictions[:, i]))
         column_names = ["metric", "global"] + list(range(labels.shape[1]))
         df = pd.DataFrame(data, columns=column_names)
         df.to_csv(tsv_file, sep="\t", index=False)
@@ -198,7 +197,21 @@ def __get_metrics(input_data="binary"):
     if input_data == "binary":
         return(dict(aucROC=roc_auc_score, aucPR=average_precision_score))
 
-    return(dict(Pearson=pearsonr, Spearman=spearmanr))
+    return(dict(Pearson=pearson_corrcoef))
+
+def pearson_corrcoef(y_true, y_score):
+
+    if y_true.ndim == 1:
+        return np.corrcoef(y_true, y_score)[0, 1]
+    else:
+        if y_true.shape[1] == 1:
+            return np.corrcoef(y_true, y_score)[0, 1]
+        else:
+            corrcoefs = []
+            for i in range(len(y_score)):
+                x = np.corrcoef(y_true[i, :], y_score[i, :])[0, 1]
+                corrcoefs.append(x)
+            return np.mean(corrcoefs)
 
 if __name__ == "__main__":
     cli()
