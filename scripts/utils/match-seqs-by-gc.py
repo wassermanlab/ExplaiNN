@@ -2,7 +2,10 @@
 
 from Bio import SeqIO
 from Bio.Seq import Seq
-from Bio.SeqUtils import gc_fraction
+try:
+    from Bio.SeqUtils import gc_fraction
+except:
+    from Bio.SeqUtils import GC as gc_fraction
 import click
 import copy
 import importlib
