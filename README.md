@@ -322,6 +322,11 @@ plt.show()
 
 <img src="data\test\figs\importance_TF.png" style="zoom:55%;" />
 
-#### Execution time
+### Execution time
 
 ExplaiNN's execution times are subject to **1)** the size of the training dataset and **2)** the number of units used. For an approximation to execution times for your dataset of interest please refer to [Figure 3D](https://www.biorxiv.org/content/biorxiv/early/2022/11/13/2022.05.20.492818/F3.large.jpg).
+
+
+## Tutorial
+
+For a comprehensive guide on how to fully utilize ExplaiNN, including creating realistic backgrounds and analyzing the AI-TAC dataset, please refer to the tutorial provided here.
