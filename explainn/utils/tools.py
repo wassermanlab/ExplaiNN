@@ -92,6 +92,7 @@ def load_datas(path_h5, batch_size, num_workers, shuffle):
     train_out = np.array(data['train_out'])
     return dataloaders, target_labels, train_out
 
+
 def load_single_data(path_h5, batch_size, num_workers, shuffle):
     """
     Load h5 file as a single dataset. Has to have the following fields:
@@ -131,6 +132,7 @@ def load_single_data(path_h5, batch_size, num_workers, shuffle):
 
     return dataloader, res, res_lab
 
+
 def dna_one_hot(seq, seq_len=None, flatten=False):
     """
     Converts an input dna sequence to one hot encoded representation, with (A:0,C:1,G:2,T:3) alphabet
@@ -155,22 +157,22 @@ def dna_one_hot(seq, seq_len=None, flatten=False):
 
     seq = seq.upper()
 
-    seq = seq.replace('A', '0')
-    seq = seq.replace('C', '1')
-    seq = seq.replace('G', '2')
-    seq = seq.replace('T', '3')
+    seq = seq.replace("A", "0")
+    seq = seq.replace("C", "1")
+    seq = seq.replace("G", "2")
+    seq = seq.replace("T", "3")
 
     # map nt's to a matrix 4 x len(seq) of 0's and 1's.
-    #  dtype='int8' fails for N's
-    seq_code = np.zeros((4, seq_len), dtype='float16')
+    # dtype="int8" fails for N's
+    seq_code = np.zeros((4, seq_len), dtype="float16")
     for i in range(seq_len):
         if i < seq_start:
-            seq_code[:, i] = 0.25
+            seq_code[:, i] = 0.
         else:
             try:
-                seq_code[int(seq[i - seq_start]), i] = 1
+                seq_code[int(seq[i - seq_start]), i] = 1.
             except:
-                seq_code[:, i] = 0.25
+                seq_code[:, i] = 0.
 
     # flatten and make a column vector 1 x len(seq)
     if flatten:
@@ -179,7 +181,7 @@ def dna_one_hot(seq, seq_len=None, flatten=False):
     return seq_code
 
 
-def convert_onehot_back_to_seq(dataloader):
+def convert_one_hot_back_to_seq(dataloader):
     """
     Converts one-hot encoded matrices back to DNA sequences
     :param dataloader: pytorch, DataLoader
@@ -187,7 +189,7 @@ def convert_onehot_back_to_seq(dataloader):
     """
 
     sequences = []
-    code = ['A', 'C', 'G', 'T']
+    code = list("ACGT")
     for seqs, labels in tqdm(dataloader, total=len(dataloader)):
         x = seqs.permute(0, 1, 3, 2)
         x = x.squeeze(-1)
@@ -225,7 +227,8 @@ def _flip(x, dim):
 
     return x.view(xsize)
 
-def pearson_loss(x,y):
+
+def pearson_loss(x, y):
     """
     Loss that is based on Pearson correlation/objective function
     :param x: torch, input data
@@ -260,6 +263,7 @@ def change_grad_filters(model, val, index):
 
     return model
 
+
 def _PWM_to_filter_weights(pwm, filter_size=19):
     """
     Function to convert a given pwm into convolutional filter
@@ -290,6 +294,7 @@ def _PWM_to_filter_weights(pwm, filter_size=19):
                 lpop += 1
 
     return(np.array(pwm) - .25)
+
 
 def read_meme(meme_file):
     """

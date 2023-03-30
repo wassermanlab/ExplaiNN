@@ -2,7 +2,7 @@
 # IMPORTS
 # =============================================================================
 from collections import OrderedDict
-
+import math
 import torch.nn.functional as F
 import torch.utils.data
 import torch.nn as nn
@@ -12,15 +12,33 @@ from explainn.utils.tools import _flip
 # =============================================================================
 # MODEL CLASSES
 # =============================================================================
-class exp_activation_module(nn.Module):
+class ExpActivation(nn.Module):
     """
-    Exponential activation function
-    (from Koo, 2021, PMID: 34322657)
+    Exponential activation function from Koo & Ploenzke, 2021 (PMID: 34322657)
     """
     def __init__(self):
-        super(exp_activation_module, self).__init__()
+        super(ExpActivation, self).__init__()
+
     def forward(self, x):
         return torch.exp(x)
+
+
+class TimeDistributedDense(nn.Module):
+    """
+    Time-distributed dense layer ()
+    """
+    def __init__(self, module):
+        super(TimeDistributedDense, self).__init__()
+        self.module = module
+
+    def forward(self, x):
+        x_shape = x.size()
+        timesteps = x_shape[1]
+        x = x.contiguous().view(-1, x_shape[2])
+        x = self.module(x)
+        x = x.contiguous().view(x_shape[0], timesteps, -1)
+        return x
+
 
 class Unsqueeze(torch.nn.Module):
     """
@@ -29,10 +47,10 @@ class Unsqueeze(torch.nn.Module):
     def forward(self, x):
         return x.unsqueeze(-1)
 
+
 class ConvNetDeep(nn.Module):
     """
-    CNN with 3 conv layers;
-    Inspired by Basset (PMID: 27197224)
+    CNN with 3 convolutional layers adapted from Basset (PMID: 27197224)
     """
     def __init__(self, num_classes, weight_path=None):
         """
@@ -115,7 +133,7 @@ class ConvNetDeep(nn.Module):
         self.load_state_dict(new_dict)
 
 
-#################################################################################
+###############################################################################
 class ConvNetShallow(nn.Module):
     """
     Shallow CNN model with 1 convolutional layer
@@ -187,45 +205,56 @@ class ConvNetShallow(nn.Module):
         self.load_state_dict(new_dict)
 
 
-#################################################################################
+###############################################################################
 class DanQ(nn.Module):
     """
-    Implementation of DanQ architecture
-    (PMID: 27084946)
+    PyTorch implementation of the DanQ architecture (PMID: 27084946)
     """
-    def __init__(self, num_classes, weight_path=None):
+    def __init__(self, input_length, num_classes, weight_path=None):
         """
         initialize the model
-        designed for input sequences of length 200 bp
-
+        :param input_length: int, input sequence length
         :param num_classes: int, number of output classes
         :param weight_path: string, path to the file with model weights
         """
         super(DanQ, self).__init__()
-        self.Conv1 = nn.Conv1d(in_channels=4, out_channels=320, kernel_size=26)
-        self.Maxpool = nn.MaxPool1d(kernel_size=13, stride=13)
-        self.Drop1 = nn.Dropout(p=0.2)
-        self.BiLSTM = nn.LSTM(input_size=320, hidden_size=320, num_layers=2,
-                              batch_first=True,
-                              dropout=0.5,
-                              bidirectional=True)
-        self.Linear1 = nn.Linear(13 * 640, 925)
-        self.Linear2 = nn.Linear(925, num_classes)
+
+        self._options = {
+            "input_length": input_length,
+            "num_classes": num_classes,
+            "weight_path": weight_path
+        }
+
+        self.conv_layer = nn.Sequential(
+            nn.Conv1d(4, 320, kernel_size=26),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=13, stride=13),
+            nn.Dropout(0.2)
+        )
+
+        self.bi_lstm_layer = nn.Sequential(
+            nn.LSTM(320, 320, num_layers=1, batch_first=True,
+                    bidirectional=True),
+        )
+
+        self._in_features_L1 = math.floor((input_length - 25) / 13.) * 640
+
+        self.classifier = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(self._in_features_L1, 925),
+            nn.ReLU(),
+            nn.Linear(925, num_classes),
+        )
 
         if weight_path:
             self.load_weights(weight_path)
 
     def forward(self, input):
-        x = self.Conv1(input)
-        x = F.relu(x)
-        x = self.Maxpool(x)
-        x = self.Drop1(x)
-        x_x = torch.transpose(x, 1, 2)
-        x, (h_n, h_c) = self.BiLSTM(x_x)
-        x = x.contiguous().view(-1, 13 * 640)
-        x = self.Linear1(x)
-        x = F.relu(x)
-        x = self.Linear2(x)
+        x = self.conv_layer(input)
+        x = x.transpose(1, 2)
+        x, _ = self.bi_lstm_layer(x)
+        x = x.contiguous().view(-1, self._in_features_L1)
+        x = self.classifier(x)
         return x
 
     def load_weights(self, weight_path):
@@ -263,12 +292,23 @@ class ExplaiNN(nn.Module):
         """
         super(ExplaiNN, self).__init__()
 
+        self._options = {
+            "num_cnns": num_cnns,
+            "input_length": input_length,
+            "num_classes": num_classes,
+            "filter_size": filter_size,
+            "num_fc": num_fc,
+            "pool_size": pool_size,
+            "pool_stride": pool_stride,
+            "weight_path": weight_path
+        }
+
         if num_fc == 0:
             self.linears = nn.Sequential(
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(input_length - (filter_size-1)),
                 nn.Flatten())
         elif num_fc == 1:
@@ -276,7 +316,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(pool_size, pool_stride),
                 nn.Flatten(),
                 Unsqueeze(),
@@ -291,7 +331,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(pool_size, pool_stride),
                 nn.Flatten(),
                 Unsqueeze(),
@@ -312,7 +352,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(pool_size, pool_stride),
                 nn.Flatten(),
                 Unsqueeze(),
@@ -338,16 +378,16 @@ class ExplaiNN(nn.Module):
                                              nn.Flatten())
 
         self.final = nn.Linear(num_cnns, num_classes)
-        self.num_cnns = num_cnns
-        self.num_fc = num_fc
+        #self.num_cnns = num_cnns
+        #self.num_fc = num_fc
 
         if weight_path:
             self.load_weights(weight_path)
 
     def forward(self, x):
-        x = x.repeat(1, self.num_cnns, 1)
+        x = x.repeat(1, self._options["num_cnns"], 1)
 
-        if self.num_fc <= 2:
+        if self._options["num_fc"] <= 2:
             outs = self.linears(x)
         else:
             outs = self.linears(x)
@@ -379,7 +419,6 @@ class SingleLayer(nn.Module):
     Single output layer;
     Useful when predicting on the outputs of other models
     """
-
     def __init__(self, num_inputs, num_classes, weight_path=None):
         """
         initialize the layer
@@ -418,8 +457,7 @@ class SingleLayer(nn.Module):
 
 class NAMLayer(nn.Module):
     """
-    Same as the linear class, but NAM style
-    (extra FC layers before the final output)
+    Same as the linear class, but NAM style (i.e. extra FC layers before the final output)
     """
     def __init__(self, num_inputs, num_hidden, num_classes, weight_path=None):
         """
@@ -478,10 +516,10 @@ class NAMLayer(nn.Module):
             new_dict[keys[i]] = v
         self.load_state_dict(new_dict)
 
+
 class DeepSTARR(nn.Module):
     """
-    Model taken from Almeida et al
-    (PMID: 35551305)
+    Model from Almeida et al., 2022 (PMID: 35551305)
     """
     def __init__(self, weight_path=None):
         super(DeepSTARR, self).__init__()
@@ -544,8 +582,9 @@ class DeepSTARR(nn.Module):
             new_dict[keys[i]] = v
         self.load_state_dict(new_dict)
 
+
 class NonStrandSpecific(nn.Module):
-    '''
+    """
     Adapted from Selene:
     https://github.com/FunctionLab/selene/blob/master/selene_sdk/utils/non_strand_specific_module.py
 
@@ -568,8 +607,7 @@ class NonStrandSpecific(nn.Module):
         The user-specified model architecture.
     mode : {'mean', 'max'}
         How to handle outputting a non-strand specific prediction.
-    '''
-
+    """
     def __init__(self, model):
         super(NonStrandSpecific, self).__init__()
 
@@ -582,4 +620,56 @@ class NonStrandSpecific(nn.Module):
         output = self.model.forward(input)
         output_from_rev = self.model.forward(reverse_input)
 
-        return((output + output_from_rev) / 2)
+        return (output + output_from_rev) / 2
+
+
+###############################################################################
+class PWM(nn.Module):
+    """PWM (Position Weight Matrix)."""
+    def __init__(self, pwms, input_length, scoring="sum"):
+        """
+        initialize the model
+
+        :param num_inputs: int, number of inputs
+        :param num_hidden: int, size of the FC hidden layer
+        :param num_classes: int, number of output classes
+        :param weight_path: string, path to file with weights
+        """
+        super(PWM, self).__init__()
+
+        groups, _, kernel_size = pwms.shape
+
+        self._options = {
+            "groups": groups,
+            "kernel_size": kernel_size,
+            "sequence_length": sequence_length,
+            "scoring": scoring
+        }
+
+        self.conv1d = nn.Conv1d(
+            in_channels=4*groups,
+            out_channels=1*groups,
+            kernel_size=kernel_size,
+            groups=groups,
+        )
+
+        # No bias
+        self.conv1d.bias.data = torch.Tensor([0.]*groups)
+
+        # Set weights to PWM weights
+        self.conv1d.weight.data = torch.Tensor(pwms)
+
+        # Freeze
+        for p in self.conv1d.parameters():
+            p.requires_grad = False
+
+    def forward(self, x):
+        """Forward propagation of a batch."""
+        x_rev = _flip(_flip(x, 1), 2)
+        o = self.conv1d(x.repeat(1, self._options["groups"], 1))
+        o_rev = self.conv1d(x_rev.repeat(1, self._options["groups"], 1))
+        o = torch.cat((o, o_rev), 2)
+        if self._options["scoring"] == "max":
+            return torch.max(o, 2)[0]
+        else:
+            return torch.sum(o, 2)

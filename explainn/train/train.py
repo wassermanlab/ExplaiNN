@@ -1,30 +1,37 @@
 # =============================================================================
 # IMPORTS
 # =============================================================================
-import torch
 import copy
+import os
+import torch
+from torch.nn import CosineSimilarity
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-def train_explainn(train_loader, test_loader, model, device, criterion, optimizer, num_epochs,
-                          weights_folder, name_ind, verbose, trim_weights, checkpoint=1):
+def train_explainn(train_loader, test_loader, model, device, criterion,
+                   optimizer, num_epochs=100, weights_folder="./",
+                   name_ind=None, verbose=False, trim_weights=False,
+                   checkpoint=1, patience=0):
     """
     Function to train the ExplaiNN model
 
     :param train_loader: pytorch DataLoader, train data
     :param test_loader: pytorch DataLoader, validation data
     :param model: ExplaiNN model
-    :param device: current available device ('cuda:0' or 'cpu')
+    :param device: current available device ("cuda:0" or "cpu")
     :param criterion: objective (loss) function to use (e.g. MSELoss)
     :param optimizer: pytorch Optimizer (e.g. SGD)
     :param num_epochs: int, number of epochs to train the model
     :param weights_folder: string, folder where to save checkpoints
     :param name_ind: string, suffix name of the checkpoints
     :param verbose: boolean, if False, does not print the progress
-    :param trim_weights: boolean, if True, makes output layer weights non negative
-    :param checkpoint: int, how often to save checkpoints. For example, 1 means that every model is saved
+    :param trim_weights: boolean, if True, makes output layer weights non-negative
+    :param checkpoint: int, how often to save checkpoints (e.g. 1 means that the model will be saved after each epoch;
+                       0 that only the best model will be saved)
+    :param patience: int, number of epochs to wait before stopping training if validation loss does not improve;
+                     if 0, this parameter is ignored
     :return: tuple:
                     trained ExplaiNN model,
                     list, train losses,
@@ -35,10 +42,12 @@ def train_explainn(train_loader, test_loader, model, device, criterion, optimize
     test_error = []
 
     best_model_wts = copy.deepcopy(model.state_dict())
+    # if save_optimizer:
+    #     best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
     best_loss_valid = float('inf')
     best_epoch = 1
 
-    for epoch in range(1,num_epochs+1):
+    for epoch in range(1, num_epochs+1):
 
         running_loss = 0.0
 
@@ -52,7 +61,7 @@ def train_explainn(train_loader, test_loader, model, device, criterion, optimize
             outputs = model(x)
             loss = criterion(outputs, labels)
 
-            # Backward and optimize
+            # backward and optimize
             loss.backward()
 
             optimizer.step()
@@ -90,14 +99,44 @@ def train_explainn(train_loader, test_loader, model, device, criterion, optimize
             best_loss_valid = test_loss
             best_epoch = epoch
             best_model_wts = copy.deepcopy(model.state_dict())
+            # if save_optimizer:
+            #     best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
 
-        if epoch % checkpoint == 0:
-            model.load_state_dict(best_model_wts)
-            torch.save(best_model_wts, weights_folder + "/"+"model_epoch_"+str(epoch)+"_"+
-                          name_ind+".pth")
+        if checkpoint:
+            if epoch % checkpoint == 0:
+                model.load_state_dict(best_model_wts)
+                if name_ind:
+                    f = f"model_epoch_{epoch}_{name_ind}.pth"
+                else:
+                    f = f"model_epoch_{epoch}.pth"
+                torch.save(best_model_wts, os.path.join(weights_folder, f))
+                # if save_optimizer:
+                #     optimizer.load_state_dict(best_optimizer_wts)
+                #     if name_ind:
+                #         f = f"optimizer_epoch_{epoch}_{name_ind}.pth"
+                #     else:
+                #         f = f"optimizer_epoch_{epoch}.pth"
+                #     torch.save(best_optimizer_wts, os.path.join(weights_folder, f))
+
+        if patience:
+            if epoch >= best_epoch + patience:  # at last, we lost our patience!
+                if verbose:
+                    print('Early stopping, Current Epoch {}, Best Epoch: {}, Patience: {}'
+                        .format(epoch, best_epoch, patience))
+                break
 
     model.load_state_dict(best_model_wts)
-    torch.save(best_model_wts, weights_folder + "/" + "model_epoch_best_" + str(best_epoch) + "_" +
-               name_ind + ".pth")  # weights_folder, name_ind
+    if name_ind:
+        f = f"model_epoch_best_{best_epoch}_{name_ind}.pth"
+    else:
+        f = f"model_epoch_best_{best_epoch}.pth"
+    torch.save(best_model_wts, os.path.join(weights_folder, f))
+    # if save_optimizer:
+    #     optimizer.load_state_dict(best_optimizer_wts)
+    #     if name_ind:
+    #         f = f"optimizer_epoch_best_{best_epoch}_{name_ind}.pth"
+    #     else:
+    #         f = f"optimizer_epoch_best_{best_epoch}.pth"
+    #     torch.save(best_optimizer_wts, os.path.join(weights_folder, f))
 
     return model, train_error, test_error

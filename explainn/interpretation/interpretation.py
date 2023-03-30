@@ -6,6 +6,7 @@ import pandas as pd
 import torch
 import numpy as np
 from tqdm import tqdm
+bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
 # =============================================================================
 # FUNCTIONS
@@ -47,6 +48,7 @@ def nullify_filter_strict(self, input, output):
     if self.mode[0] == 'Compare':
         output[:, self.mode[1], :] = 0
 
+
 def get_explainn_predictions(data_loader, model, device, isSigmoid=False):
     """
     Function to get predictions and true labels for all sequences in the given data loader
@@ -77,7 +79,7 @@ def get_explainn_predictions(data_loader, model, device, isSigmoid=False):
 
     return running_outputs, running_labels
 
-#
+
 def get_explainn_unit_outputs(data_loader, model, device):
     """
     Function to get predictions and true labels for all sequences in the given data loader
@@ -90,7 +92,7 @@ def get_explainn_unit_outputs(data_loader, model, device):
     running_cnn_outputs = []
     for seq, lbl in data_loader:
         x = seq.to(device)
-        x = x.repeat(1, model.num_cnns, 1)
+        x = x.repeat(1, model._options["num_cnns"], 1)
         cnn_output = model.linears(x)
         running_cnn_outputs.extend(cnn_output.cpu().detach().numpy())
 
@@ -121,6 +123,7 @@ def get_explainn_unit_outputs(data_loader, model, device):
 #     running_cnn_outputs = np.array(running_cnn_outputs)
 #     return running_cnn_outputs
 
+
 def get_explainn_unit_activations(data_loader, model, device):
     """
     Function to scan input sequences by ExplaiNN model convolutional filters and compute the convolutional units outputs
@@ -133,12 +136,13 @@ def get_explainn_unit_activations(data_loader, model, device):
     """
 
     running_activations = []
+    tqdm_kwargs = {"bar_format": bar_format, "total": len(data_loader)}
 
     with torch.no_grad():
-        for seq, lbl in tqdm(data_loader, total=len(data_loader)):
+        for seq, lbl in tqdm(data_loader, **tqdm_kwargs):
             seq = seq.to(device)
 
-            seq = seq.repeat(1, model.num_cnns, 1)
+            seq = seq.repeat(1, model._options["num_cnns"], 1)
             act = model.linears[:3](seq)
 
             running_activations.extend(act.cpu().numpy())
@@ -146,13 +150,36 @@ def get_explainn_unit_activations(data_loader, model, device):
     return np.array(running_activations)
 
 
-def get_pwms_explainn(activations, sequences, y, filter_size):
+def get_danq_activations(data_loader, model, device):
+    """
+    Function to scan input sequences by DanQ model convolutional filters and compute the outputs
+    (activations)
+    :param data_loader: torch DataLoader, the sequence dataset
+    :param model: DanQ model
+    :param device: current available device ('cuda:0' or 'cpu')
+    :return: numpy.array, matrix of activations of shape (N, 320, S); N - size of the dataset; S - size of the activation map
+    """
+
+    running_activations = []
+    tqdm_kwargs = {"bar_format": bar_format, "total": len(data_loader)}
+
+    with torch.no_grad():
+        for seq, lbl in tqdm(data_loader, **tqdm_kwargs):
+            seq = seq.to(device)
+
+            act = model.conv_layer[:2](seq)
+
+            running_activations.extend(act.cpu().numpy())
+
+    return np.array(running_activations)
+
+
+def get_pwms_explainn(activations, sequences, filter_size):
     """
     Function to convert filter activation values to PWMs
     :param activations: numpy.array, matrix of activations of shape (N, U, S); N - size of the dataset;
     U - number of units; S - size of the activation map
     :param sequences: torch, array of one-hot encoded sequences
-    :param y: torch, array of output labels
     :param filter_size: int, size of the filter
     :return: numpy.array, pwm matrices, shape (U, 4, filter_size), where U - number of units
     """
@@ -167,13 +194,14 @@ def get_pwms_explainn(activations, sequences, y, filter_size):
     # npad = ((0, 0), (0, 0), (9, 9))
     # sequences = np.pad(sequences, pad_width=npad, mode='constant', constant_values=0)
 
-    pwm = np.zeros((n_filters, 4, filter_size))
+    pwm = np.full((n_filters, 4, filter_size), .25)
     # pfm = np.zeros((n_filters, 4, filter_size))
     n_samples = activations.shape[0]
 
     activation_indices = []
+    tqdm_kwargs = {"bar_format": bar_format, "total": n_filters}
 
-    for i in tqdm(range(n_filters)):
+    for i in tqdm(range(n_filters), **tqdm_kwargs):
         # create list to store filter_size bp sequences that activated filter
         act_seqs_list = []
 
@@ -192,41 +220,44 @@ def get_pwms_explainn(activations, sequences, y, filter_size):
             pwm_tmp = np.sum(act_seqs, axis=0)
             # pfm_tmp = pwm_tmp
             total = np.sum(pwm_tmp, axis=0)
+            total[total==0] = 1. # avoids RuntimeWarning: invalid value encountered in true_divide
             pwm_tmp = np.nan_to_num(pwm_tmp / total)
-
             pwm[i] = pwm_tmp
             # pfm[i] = pfm_tmp
 
     return pwm
 
 
-def pwm_to_meme(pwm, output_file_path):
+def pwm_to_meme(pwm, output_file_path, names=None, verbose=True):
     """
     Function to convert pwm array to meme file
     :param pwm: numpy.array, pwm matrices, shape (U, 4, filter_size), where U - number of units
     :param output_file_path: string, the name of the output meme file
     """
 
-    n_filters = pwm.shape[0]
-    filter_size = pwm.shape[2]
+    n_filters = len(pwm)
+
+    if names is None:
+        names = {i: f"filter{i}" for i in range(n_filters)}
+
     meme_file = open(output_file_path, 'w')
-    meme_file.write("MEME version 4 \n")
-
-    print('Saved PWM File as : {}'.format(output_file_path))
-
-    for i in range(0, n_filters):
-        if np.sum(pwm[i, :, :]) > 0:
+    meme_file.write("MEME version 4\n")
+    for i in range(n_filters):
+        if np.sum(pwm[i][:, :]) > 0:
             meme_file.write("\n")
-            meme_file.write("MOTIF filter%s \n" % i)
+            meme_file.write("MOTIF %s \n" % names[i])
             meme_file.write(
-                "letter-probability matrix: alength= 4 w= %d \n" % np.count_nonzero(np.sum(pwm[i, :, :], axis=0)))
-
-        for j in range(0, filter_size):
-            if np.sum(pwm[i, :, j]) > 0:
-                meme_file.write(str(pwm[i, 0, j]) + "\t" + str(pwm[i, 1, j]) + "\t" + str(pwm[i, 2, j]) + "\t" + str(
-                    pwm[i, 3, j]) + "\n")
-
+                "letter-probability matrix: alength= 4 w= %d \n" % np.count_nonzero(np.sum(pwm[i][:, :], axis=0)))
+        filter_size = pwm[i].shape[1]
+        for j in range(filter_size):
+            if np.sum(pwm[i][:, j]) > 0:
+                meme_file.write(str(pwm[i][0, j]) + "\t" + str(pwm[i][1, j]) + "\t" + str(pwm[i][2, j]) + "\t" + str(
+                    pwm[i][3, j]) + "\n")
     meme_file.close()
+
+    if verbose:
+        print('Saved PWM File as : {}'.format(output_file_path))
+
 
 def get_median_unit_importance(activations, model, unit_outputs, target_labels):
     """
@@ -254,8 +285,9 @@ def get_median_unit_importance(activations, model, unit_outputs, target_labels):
     weights = model.final.weight.detach().cpu().numpy()  # -0.035227 0.480355
 
     feat_imp_median = np.zeros((100, 50))
+    tqdm_kwargs = {"bar_format": bar_format, "total": 100}
 
-    for filt in tqdm(range(100)):
+    for filt in tqdm(range(100), **tqdm_kwargs):
         res_distr = {}
         for cl in range(len(target_labels)):
             f_cell = np.multiply(unit_outputs, weights[cl])
@@ -287,7 +319,8 @@ def get_specific_unit_importance(activations, model, unit_outputs, filt, target_
 
     # sequences (their indeces) that highly activated the filter
     res = {}
-    for i in range(100):
+    for i in range(activation_threshold.shape[0]):
+        if i != filt: continue # focus on current unit
         inds = []
         for j in range(activations.shape[0]):
             indices = np.where(activations[j, i, :] > activation_threshold[i])
