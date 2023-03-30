@@ -1,0 +1,1 @@
+Slides are also available on [Google Docs](https://docs.google.com/presentation/d/1KMWp0oMGo6dhn0pWaz-TFLeLBwtuWmUUD6ldEQ0C4Do/edit?usp=sharing).
