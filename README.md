@@ -329,4 +329,4 @@ ExplaiNN's execution times are subject to **1)** the size of the training datase
 
 ## Tutorial
 
-For a comprehensive guide on how to fully utilize ExplaiNN, including creating realistic backgrounds and analyzing the AI-TAC dataset, please refer to the tutorial provided [here](https://github.com/wassermanlab/ExplaiNN/blob/main/data/tutorial/slides.pptx).
+For a comprehensive guide on how to fully utilize ExplaiNN, including creating realistic backgrounds and analyzing the AI-TAC dataset, please refer to the tutorial provided [here](https://github.com/wassermanlab/ExplaiNN/blob/main/data/tutorial/slides.pdf).
