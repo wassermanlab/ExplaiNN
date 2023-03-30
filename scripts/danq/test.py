@@ -10,11 +10,14 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 import sys
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
                                 os.pardir))
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
+                                os.pardir,
+                                os.pardir))
 import time
 import torch
 
 from explainn.interpretation.interpretation import get_explainn_predictions
-from explainn.models.networks import ExplaiNN
+from explainn.models.networks import DanQ
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device)
 
@@ -114,10 +117,7 @@ def cli(**args):
     device = get_device()
 
     # Get model
-    m = ExplaiNN(train_args["num_units"], train_args["input_length"],
-                 num_classes, train_args["filter_size"], train_args["num_fc"],
-                 train_args["pool_size"], train_args["pool_stride"],
-                 train_args["weights_file"])
+    m = DanQ(train_args["input_length"], num_classes, train_args["weights_file"])
     m.load_state_dict(torch.load(args["model_file"]))
 
     # Test

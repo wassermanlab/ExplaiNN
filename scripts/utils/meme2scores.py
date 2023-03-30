@@ -259,7 +259,7 @@ def _get_PWMs(meme_file, resize_pwms=False, return_log=False):
         elif line.startswith("letter-probability matrix:"):
             continue
         else:
-            m = re.search("^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$", line)
+            m = re.search("^[\t\s]*(\S+)[\t\s]+(\S+)[\t\s]+(\S+)[\t\s]+(\S+)", line)
             if m:
                 for l in range(len(alphabet)):
                     # Add pseudocounts

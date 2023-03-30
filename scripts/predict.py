@@ -3,18 +3,19 @@
 from Bio import SeqIO
 import click
 from io import StringIO
+import json
 import numpy as np
+import os
 import pandas as pd
 import sys
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
+                                os.pardir))
+import time
 import torch
-from torch.utils.data import DataLoader, TensorDataset
-from tqdm import tqdm
-bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
-# Local imports
-from architectures import ExplaiNN
-from sequence import one_hot_encode_many, rc_one_hot_encoding_many
-from utils import get_file_handle
+from explainn.interpretation.interpretation import get_explainn_predictions
+from explainn.models.networks import ExplaiNN
+from utils import get_file_handle, get_data_loader, get_device
 
 CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
@@ -30,28 +31,60 @@ CONTEXT_SETTINGS = {
     type=click.Path(exists=True, resolve_path=True)
 )
 @click.option(
-    "-b", "--batch-size",
-    help="Batch size.",
+    "-c", "--cpu-threads",
+    help="Number of CPU threads to use.",
     type=int,
-    default=2**6,
+    default=1,
     show_default=True,
 )
 @click.option(
-    "-o", "--output-file",
-    help="Output file.  [default: stdout]",
+    "-d", "--debugging",
+    help="Debugging mode.",
+    is_flag=True,
+)
+@click.option(
+    "-o", "--output-dir",
+    help="Output directory.",
     type=click.Path(resolve_path=True),
+    default="./",
+    show_default=True,
 )
 @click.option(
     "-s", "--apply-sigmoid",
     help="Apply the logistic sigmoid function to outputs.",
     is_flag=True,
 )
+@click.option(
+    "-t", "--time",
+    help="Return the program's running execution time in seconds.",
+    is_flag=True,
+)
 
-def main(**args):
+def cli(**args):
+
+    # Start execution
+    start_time = time.time()
+
+    # Initialize
+    if not os.path.exists(args["output_dir"]):
+        os.makedirs(args["output_dir"])
+
+    # Save exec. parameters as JSON
+    json_file = os.path.join(args["output_dir"],
+                             f"parameters-{os.path.basename(__file__)}.json")
+    handle = get_file_handle(json_file, "wt")
+    handle.write(json.dumps(args, indent=4, sort_keys=True))
+    handle.close()
 
     ##############
     # Load Data  #
     ##############
+
+    # Get training sequences and labels
+    seqs, labels, _ = get_seqs_labels_ids(args["test_file"],
+                                          args["debugging"],
+                                          False,
+                                          train_args["input_length"])
 
     # Get data
     Xs, seq_ids = _get_Xs_ids(args["fasta_file"])
@@ -151,4 +184,4 @@ def _load_model(model_file):
     return(model)
 
 if __name__ == "__main__":
-    main()
+    cli()

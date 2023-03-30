@@ -2437,6 +2437,6 @@ filter97	MA1149.1	-4	0.0297797	22.2157	0.436419	15	AGATGGCGCCATCTAATCG	GAGGTCATG
 filter97	MA1545.1	-2	0.0309918	23.1199	0.449594	13	AGATGGCGCCATCTAATCG	GTACCGTTATGTG	+
 filter97	MA1128.1	-1	0.0327679	24.4449	0.470607	13	AGATGGCGCCATCTAATCG	GGATGAGTCATCA	-
 
-# Tomtom (Motif Comparison Tool): Version 5.4.1 compiled on Feb 25 2022 at 15:31:50
+# Tomtom (Motif Comparison Tool): Version 5.4.1 compiled on Feb 25 2022 at 16:23:10
 # The format of this file is described at https://meme-suite.org/meme/doc/tomtom-output-format.html.
-# tomtom --text ./data/test/explainn_filters.meme ./data/JASPAR/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme.txt
+# tomtom --text ../data/test/explainn_filters.meme ../data/JASPAR/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme.txt

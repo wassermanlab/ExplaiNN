@@ -12,14 +12,33 @@ from explainn.utils.tools import _flip
 # =============================================================================
 # MODEL CLASSES
 # =============================================================================
-class exp_activation_module(nn.Module):
+class ExpActivation(nn.Module):
     """
     Exponential activation function from Koo & Ploenzke, 2021 (PMID: 34322657)
     """
     def __init__(self):
-        super(exp_activation_module, self).__init__()
+        super(ExpActivation, self).__init__()
+
     def forward(self, x):
         return torch.exp(x)
+
+
+class TimeDistributedDense(nn.Module):
+    """
+    Time-distributed dense layer ()
+    """
+    def __init__(self, module):
+        super(TimeDistributedDense, self).__init__()
+        self.module = module
+
+    def forward(self, x):
+        x_shape = x.size()
+        timesteps = x_shape[1]
+        x = x.contiguous().view(-1, x_shape[2])
+        x = self.module(x)
+        x = x.contiguous().view(x_shape[0], timesteps, -1)
+        return x
+
 
 class Unsqueeze(torch.nn.Module):
     """
@@ -27,6 +46,7 @@ class Unsqueeze(torch.nn.Module):
     """
     def forward(self, x):
         return x.unsqueeze(-1)
+
 
 class ConvNetDeep(nn.Module):
     """
@@ -188,12 +208,11 @@ class ConvNetShallow(nn.Module):
 ###############################################################################
 class DanQ(nn.Module):
     """
-    Implementation of DanQ architecture (PMID: 27084946)
+    PyTorch implementation of the DanQ architecture (PMID: 27084946)
     """
     def __init__(self, input_length, num_classes, weight_path=None):
         """
         initialize the model
-
         :param input_length: int, input sequence length
         :param num_classes: int, number of output classes
         :param weight_path: string, path to the file with model weights
@@ -206,31 +225,36 @@ class DanQ(nn.Module):
             "weight_path": weight_path
         }
 
-        self.Conv1 = nn.Conv1d(in_channels=4, out_channels=320, kernel_size=26)
-        self.Maxpool = nn.MaxPool1d(kernel_size=13, stride=13)
-        self.Drop1 = nn.Dropout(p=0.2)
-        self.BiLSTM = nn.LSTM(input_size=320, hidden_size=320, num_layers=2,
-                              batch_first=True,
-                              dropout=0.5,
-                              bidirectional=True)
+        self.conv_layer = nn.Sequential(
+            nn.Conv1d(4, 320, kernel_size=26),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=13, stride=13),
+            nn.Dropout(0.2)
+        )
+
+        self.bi_lstm_layer = nn.Sequential(
+            nn.LSTM(320, 320, num_layers=1, batch_first=True,
+                    bidirectional=True),
+        )
+
         self._in_features_L1 = math.floor((input_length - 25) / 13.) * 640
-        self.Linear1 = nn.Linear(self._in_features_L1, 925)
-        self.Linear2 = nn.Linear(925, num_classes)
+
+        self.classifier = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(self._in_features_L1, 925),
+            nn.ReLU(),
+            nn.Linear(925, num_classes),
+        )
 
         if weight_path:
             self.load_weights(weight_path)
 
     def forward(self, input):
-        x = self.Conv1(input)
-        x = F.relu(x)
-        x = self.Maxpool(x)
-        x = self.Drop1(x)
-        x_x = torch.transpose(x, 1, 2)
-        x, _ = self.BiLSTM(x_x)
+        x = self.conv_layer(input)
+        x = x.transpose(1, 2)
+        x, _ = self.bi_lstm_layer(x)
         x = x.contiguous().view(-1, self._in_features_L1)
-        x = self.Linear1(x)
-        x = F.relu(x)
-        x = self.Linear2(x)
+        x = self.classifier(x)
         return x
 
     def load_weights(self, weight_path):
@@ -284,7 +308,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(input_length - (filter_size-1)),
                 nn.Flatten())
         elif num_fc == 1:
@@ -292,7 +316,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(pool_size, pool_stride),
                 nn.Flatten(),
                 Unsqueeze(),
@@ -307,7 +331,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(pool_size, pool_stride),
                 nn.Flatten(),
                 Unsqueeze(),
@@ -328,7 +352,7 @@ class ExplaiNN(nn.Module):
                 nn.Conv1d(in_channels=4 * num_cnns, out_channels=1 * num_cnns, kernel_size=filter_size,
                           groups=num_cnns),
                 nn.BatchNorm1d(num_cnns),
-                exp_activation_module(),
+                ExpActivation(),
                 nn.MaxPool1d(pool_size, pool_stride),
                 nn.Flatten(),
                 Unsqueeze(),
@@ -491,6 +515,7 @@ class NAMLayer(nn.Module):
                     continue
             new_dict[keys[i]] = v
         self.load_state_dict(new_dict)
+
 
 class DeepSTARR(nn.Module):
     """

@@ -10,12 +10,15 @@ import shutil
 import sys
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
                                 os.pardir))
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
+                                os.pardir,
+                                os.pardir))
 import time
 import torch
 
 from explainn.train.train import train_explainn
 from explainn.utils.tools import pearson_loss
-from explainn.models.networks import ExplaiNN
+from explainn.models.networks import DanQ
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device)
 
@@ -56,47 +59,12 @@ CONTEXT_SETTINGS = {
     help="Return the program's running execution time in seconds.",
     is_flag=True,
 )
-@optgroup.group("ExplaiNN")
-@optgroup.option(
-    "--filter-size",
-    help="Size of each unit's filter.",
-    type=int,
-    default=19,
-    show_default=True,
-)
+@optgroup.group("DanQ")
 @optgroup.option(
     "--input-length",
     help="Input length (for longer and shorter sequences, trim or add padding, i.e. Ns, up to the specified length).",
     type=int,
     required=True,
-)
-@optgroup.option(
-    "--num-fc",
-    help="Number of fully connected layers in each unit.",
-    type=click.IntRange(0, 8, clamp=True),
-    default=2,
-    show_default=True,
-)
-@optgroup.option(
-    "--num-units",
-    help="Number of independent units.",
-    type=int,
-    default=100,
-    show_default=True,
-)
-@optgroup.option(
-    "--pool-size",
-    help="Size of each unit's maxpooling layer.",
-    type=int,
-    default=7,
-    show_default=True,
-)
-@optgroup.option(
-    "--pool-stride",
-    help="Stride of each unit's maxpooling layer.",
-    type=int,
-    default=7,
-    show_default=True,
 )
 @optgroup.option(
     "--weights-file",
@@ -114,7 +82,7 @@ CONTEXT_SETTINGS = {
     "--lr",
     help="Learning rate.",
     type=float,
-    default=0.003,
+    default=0.001,
     show_default=True,
 )
 @optgroup.option(
@@ -228,9 +196,7 @@ def cli(**args):
         criterion = torch.nn.PoissonNLLLoss()
 
     # Get model and optimizer
-    m = ExplaiNN(args["num_units"], input_length, num_classes,
-                 args["filter_size"], args["num_fc"], args["pool_size"],
-                 args["pool_stride"], args["weights_file"])
+    m = DanQ(input_length, num_classes, args["weights_file"])
     o = _get_optimizer(args["optimizer"], m.parameters(), args["lr"])
 
     # Train
@@ -248,7 +214,7 @@ def cli(**args):
         handle.close()
     print(f"Execution time {seconds} seconds")
 
-def _get_optimizer(optimizer, parameters, lr=0.003):
+def _get_optimizer(optimizer, parameters, lr=0.001):
 
     if optimizer.lower() == "adam":
         return torch.optim.Adam(parameters, lr=lr)

@@ -150,6 +150,30 @@ def get_explainn_unit_activations(data_loader, model, device):
     return np.array(running_activations)
 
 
+def get_danq_activations(data_loader, model, device):
+    """
+    Function to scan input sequences by DanQ model convolutional filters and compute the outputs
+    (activations)
+    :param data_loader: torch DataLoader, the sequence dataset
+    :param model: DanQ model
+    :param device: current available device ('cuda:0' or 'cpu')
+    :return: numpy.array, matrix of activations of shape (N, 320, S); N - size of the dataset; S - size of the activation map
+    """
+
+    running_activations = []
+    tqdm_kwargs = {"bar_format": bar_format, "total": len(data_loader)}
+
+    with torch.no_grad():
+        for seq, lbl in tqdm(data_loader, **tqdm_kwargs):
+            seq = seq.to(device)
+
+            act = model.conv_layer[:2](seq)
+
+            running_activations.extend(act.cpu().numpy())
+
+    return np.array(running_activations)
+
+
 def get_pwms_explainn(activations, sequences, filter_size):
     """
     Function to convert filter activation values to PWMs

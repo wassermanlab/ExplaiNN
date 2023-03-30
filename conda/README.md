@@ -5,7 +5,7 @@ conda create -y -n explainn -c pytorch -c conda-forge -c bioconda \
     biasaway \
     biopython \
     click click-option-group \
-    cudatoolkit=11.3.1 pytorch=1.11.0 torchvision=0.12.0  \
+    cudatoolkit=11.0.3 pytorch=1.11 torchaudio=0.12.1 torchvision=0.13.1 \
     fastcluster \
     genomepy \
     h5py \
