@@ -8,10 +8,10 @@ ExplaiNN can be found with the following link: [biorxiv manuscript](https://www.
 
 ## Installation
 
-Explainn library is available on pip and can be installed with:
+ExplaiNN library is available on pip and can be installed with:
 
 ```
-pip install explainn==0.1.5
+pip install explainn==23.5.1
 ```
 
 Note that torch should be installed in the environment prior to explainn. If you encounter **ERROR: No matching distribution** type of errors, try to install the following libraries first:
@@ -25,6 +25,8 @@ matplotlib==3.5.2
 ```
 
 A normal successful installation should finish in a few minutes.
+
+**RECOMMENDED** Alternatively, you can install ExplaiNN via `python setup.py install`.
 
 ## Example of training an ExplaiNN model on TF binding data
 

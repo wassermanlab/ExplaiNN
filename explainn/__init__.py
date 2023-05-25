@@ -8,4 +8,4 @@ from .interpretation import interpretation
 from .train import train, test
 from .models import networks
 
-__version__ = "0.1.5"
+__version__ = "23.5.1"
