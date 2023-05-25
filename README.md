@@ -26,7 +26,7 @@ matplotlib==3.5.2
 
 A normal successful installation should finish in a few minutes.
 
-**RECOMMENDED** Alternatively, you can install ExplaiNN via `python setup.py install`.
+**RECOMMENDED:** Alternatively, you can install ExplaiNN via `python setup.py install`.
 
 ## Example of training an ExplaiNN model on TF binding data
 
