@@ -1,36 +1,45 @@
 # ExplaiNN
 
-<img src="data\figs\ExplaiNN.png" style="zoom:55%;" />
+<img src="./data/figs/ExplaiNN.png"  height="55%" width="55%" />
 
-ExplaiNN is an adaptation of neural additive models ([NAMs](https://arxiv.org/abs/2004.13912)) for genomic tasks wherein predictions are computed as a linear combination of multiple independent CNNs, each consisting of a single convolutional filter and fully connected layers. This approach brings together the expressivity of CNNs with the interpretability of linear models, providing global (cell state level) as well as local (individual sequence level) insights of the biological processes studied.
+`ExplaiNN` is an adaptation of neural additive models ([NAMs](https://arxiv.org/abs/2004.13912)) for genomic tasks, where predictions are computed as a linear combination of multiple independent CNNs. Each CNN consists of a single convolutional filter and fully connected layers. This approach combines the expressivity of CNNs with the interpretability of linear models, providing global (cell state level) as well as local (individual sequence level) insights into the studied biological processes.
 
-ExplaiNN can be found with the following link: [biorxiv manuscript](https://www.biorxiv.org/content/10.1101/2022.05.20.492818v1).
+
+## Requirements
+
+`ExplaiNN` requires [`Python 3.x`](https://www.python.org) with the following dependencies:
+
+* [`h5py`](https://docs.h5py.org/en/stable/)
+* [`matplotlib`](https://matplotlib.org/)
+* [`NumPy`](https://numpy.org/)
+* [`pandas`](https://pandas.pydata.org/)
+* [`PyTorch`](https://pytorch.org/)
+* [`tqdm`](https://github.com/tqdm/tqdm)
+
+Additionally, the parsers, trainers, interpreters, etc. provided in the `./scripts` folder require:
+
+* [`Biopython`](https://biopython.org/)
+* [`click`](https://click.palletsprojects.com/en/8.1.x/) and [`click_option_group`](https://click-option-group.readthedocs.io/en/latest/) 
+* [`fastcluster`](http://danifold.net/fastcluster.html)
+* [`logomaker`](https://logomaker.readthedocs.io/en/latest/)
+* [`pybedtools`](https://daler.github.io/pybedtools/)
+* [`SciPy`](https://scipy.org/)
+* [`scikit-learn`](https://scikit-learn.org/stable/)
+* [The `MEME` suite](https://meme-suite.org/meme/)
 
 ## Installation
 
-ExplaiNN library is available on pip and can be installed with:
-
-```
-pip install explainn==23.5.1
-```
-
-Note that torch should be installed in the environment prior to explainn. If you encounter **ERROR: No matching distribution** type of errors, try to install the following libraries first:
-
-```
-numpy==1.21.6
-h5py==3.6.0
-tqdm==4.64.0
-pandas==1.3.5
-matplotlib==3.5.2
+```bash
+git clone https://github.com/wassermanlab/ExplaiNN.git
+cd ExplaiNN
+python setup.py install
 ```
 
 A normal successful installation should finish in a few minutes.
 
-**RECOMMENDED:** Alternatively, you can install ExplaiNN via `python setup.py install`.
+## Example of training an `ExplaiNN` model on TF binding data
 
-## Example of training an ExplaiNN model on TF binding data
-
-Here we provide an example of how to train and interpret an ExplaiNN model for predicting the binding of the TFs FOXA1, MAX, and JUND. The dataset can be found [here](https://drive.google.com/drive/folders/1tFWWTCUoE2Jg0zrMvKKtTqEBuwkkJ1bl). 
+Below is an example of how to train and interpret an `ExplaiNN` model for predicting the binding of the TFs FOXA1, MAX, and JUND. The dataset can be found [here](https://drive.google.com/drive/folders/1tFWWTCUoE2Jg0zrMvKKtTqEBuwkkJ1bl).
 
 ### Initialize the model
 
@@ -113,7 +122,7 @@ model, train_error, test_error = train.train_explainn(dataloaders["train"],
 tools.showPlot(train_error, test_error, "Loss trend", "Loss")
 ```
 
-```
+```bash
 Epoch [1], Current Train Loss: 0.59987, Current Val Loss: 0.56369
 Epoch [2], Current Train Loss: 0.54444, Current Val Loss: 0.53805
 Epoch [3], Current Train Loss: 0.52748, Current Val Loss: 0.53336
@@ -127,7 +136,7 @@ Epoch [10], Current Train Loss: 0.48281, Current Val Loss: 0.54929
 ...
 ```
 
-<img src="data\test\figs\example_train.png" style="zoom:100%;" />
+<img src="./data/test/figs/example_train.png" />
 
 ### Testing the model
 
@@ -161,7 +170,7 @@ print(roc_prcs)
 print(roc_aucs)
 ```
 
-```
+```bash
 {'MAX': 0.825940403552367, 'FOXA1': 0.8932791261118389, 'JUND': 0.749391895435854}
 {'MAX': 0.8031278582930756, 'FOXA1': 0.8065550331791597, 'JUND': 0.7463422694967192}
 ```
@@ -170,7 +179,7 @@ print(roc_aucs)
 
 #### Unit/filter annotation
 
-Visualizing filters
+Filter visualization:
 
 ```python
 dataset, data_inp, data_out = tools.load_single_data(h5_file,
@@ -203,12 +212,12 @@ meme_file = "./data/test/explainn_filters.meme"
 interpretation.pwm_to_meme(pwms, meme_file)
 ```
 
-```
+```bash
 100%|████████████████████| 330/330 [00:02<00:00, 154.73it/s]
 100%|████████████████████| 100/100 [00:15<00:00,  6.61it/s]
 ```
 
-Tomtom annotation:
+Unit annotation with `Tomtom`:
 
 ```python
 tomtom_file = "./data/test/MAX_JUND_FOXA1_tomtom.tsv"
@@ -216,7 +225,7 @@ jaspar_meme = "./data/JASPAR/JASPAR2020_CORE_vertebrates_non-redundant_pfms_meme
 os.system(f"tomtom --text {meme_file} {jaspar_meme} > {tomtom_file}")
 ```
 
-```
+```bash
 Processing query 1 out of 100 
 # Computing q-values.
 #   Estimating pi_0 from all 1492 observed p-values.
@@ -234,7 +243,7 @@ Processing query 2 out of 100
 
 #### Output layer weights visualization
 
-Reading the tomtom's annotation:
+Reading the Tomtom's annotation:
 
 ```python
 tomtom_results = pd.read_table(f"{tomtom_file}", comment="#")
@@ -265,7 +274,7 @@ for f in filters:
 annotation = pd.Series(annotation)
 ```
 
-Retrieving weights:
+Retrieving the weights:
 
 ```python
 weights = model.final.weight.detach().cpu().numpy()
@@ -291,9 +300,9 @@ sns.clustermap(weight_df[[i for i in weight_df.columns if not i.startswith("filt
 plt.show()
 ```
 
-<img src="data\test\figs\weights_TF.png" style="zoom:55%;" />
+<img src="./data/test/figs/weights_TF.png" height="55%" width="55%" />
 
-#### Individual unit importance
+#### Individual unit importances
 
 Visualizing the MYC/MAX filter with the largest weight:
 
@@ -322,13 +331,22 @@ plt.xticks(rotation=90)
 plt.show()
 ```
 
-<img src="data\test\figs\importance_TF.png" style="zoom:55%;" />
+<img src="./data/test/figs/importance_TF.png" height="55%" width="55%" />
 
 ### Execution time
 
-ExplaiNN's execution times are subject to **1)** the size of the training dataset and **2)** the number of units used. For an approximation to execution times for your dataset of interest please refer to [Figure 3D](https://www.biorxiv.org/content/biorxiv/early/2022/11/13/2022.05.20.492818/F3.large.jpg).
-
+`ExplaiNN`'s execution times are subject to **1)** the size of the training dataset and **2)** the number of units used. For an approximation to execution times for your dataset of interest please refer to [Fig. 3D](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02985-y/figures/3).
 
 ## Tutorial
 
-For a comprehensive guide on how to fully utilize ExplaiNN, including creating realistic backgrounds and analyzing the AI-TAC dataset, please refer to the tutorial provided [here](https://github.com/wassermanlab/ExplaiNN/blob/main/data/tutorial/slides.pdf).
+For a comprehensive guide on how to fully utilize `ExplaiNN`, including creating realistic backgrounds and analyzing the [`AI-TAC` dataset](https://github.com/smaslova/AI-TAC#tutorial), please refer to the tutorial provided [here](https://github.com/wassermanlab/ExplaiNN/blob/main/data/tutorial/slides.pdf).
+
+## How to cite
+
+If you use `ExplaiNN` in your work, please cite:
+
+> **ExplaiNN: interpretable and transparent neural networks for genomics**
+>
+> Gherman Novakovsky, Oriol Fornes, Manu Saraswat, Sara Mostafavi & Wyeth W. Wasserman
+>
+> _Genome Biololgy_ volume **24**, Article number: 154 (2023). doi: [10.1186/s13059-023-02985-y](https://doi.org/10.1186/s13059-023-02985-y).
