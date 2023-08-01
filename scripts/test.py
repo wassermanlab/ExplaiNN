@@ -92,6 +92,10 @@ def cli(**args):
     handle = get_file_handle(args["training_parameters_file"], "rt")
     train_args = json.load(handle)
     handle.close()
+    if "training_parameters_file" in train_args: # i.e. for fine-tuned models
+        handle = get_file_handle(train_args["training_parameters_file"], "rt")
+        train_args = json.load(handle)
+        handle.close()
 
     # Get test sequences and labels
     seqs, labels, _ = get_seqs_labels_ids(args["test_file"],
@@ -117,8 +121,7 @@ def cli(**args):
     m = ExplaiNN(train_args["num_units"], train_args["input_length"],
                  num_classes, train_args["filter_size"], train_args["num_fc"],
                  train_args["pool_size"], train_args["pool_stride"],
-                 train_args["weights_file"])
-    m.load_state_dict(torch.load(args["model_file"]))
+                 args["model_file"])
 
     # Test
     _test(seqs, labels, m, device, input_type, train_args["rev_complement"],
@@ -169,7 +172,7 @@ def _test(seqs, labels, model, device, input_type, rev_complement,
         avg_predictions = np.empty(predictions[0].shape)
         for i in range(predictions[0].shape[1]):
             avg_predictions[:, i] = np.mean([predictions[0][:, i],
-                                            predictions[1][:, i]], axis=0)
+                                             predictions[1][:, i]], axis=0)
     else:
         avg_predictions = predictions[0]
     if input_type == "binary":
@@ -182,13 +185,19 @@ def _test(seqs, labels, model, device, input_type, rev_complement,
     tsv_file = os.path.join(output_dir, "performance-metrics.tsv")
     if not os.path.exists(tsv_file):
         data = []
+        column_names = ["metric"]
         for m in metrics:
-            data.append([m])            
-            data[-1].append(metrics[m](labels, avg_predictions))
+            data.append([m])
+            if labels.shape[1] > 1:
+                data[-1].append(metrics[m](labels, avg_predictions))
+                column_names = column_names + ["global"]
             for i in range(labels.shape[1]):
                 data[-1].append(metrics[m](labels[:, i],
-                                            avg_predictions[:, i]))
-        column_names = ["metric", "global"] + list(range(labels.shape[1]))
+                                           avg_predictions[:, i]))
+        if labels.shape[1] > 1:
+            column_names = ["metric", "global"] + list(range(labels.shape[1]))
+        else:
+            column_names = ["metric"] + list(range(labels.shape[1]))
         df = pd.DataFrame(data, columns=column_names)
         df.to_csv(tsv_file, sep="\t", index=False)
 

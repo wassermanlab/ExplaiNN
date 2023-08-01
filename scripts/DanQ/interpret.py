@@ -20,11 +20,10 @@ import torch
 from tqdm import tqdm
 bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 
+
 from explainn.models.networks import DanQ
 from explainn.interpretation.interpretation import (get_explainn_predictions,
                                                     get_danq_activations,
-                                                    get_explainn_unit_outputs,
-                                                    get_specific_unit_importance,
                                                     get_pwms_explainn,
                                                     pwm_to_meme)
 
@@ -167,13 +166,13 @@ def cli(**args):
         threshold = args["percentile_top"]
 
     # Get model
-    m = DanQ(train_args["input_length"], num_classes, train_args["weights_file"])
-    m.load_state_dict(torch.load(args["model_file"]))
+    m = DanQ(train_args["input_length"], num_classes, args["model_file"])
 
     # Interpret
     _interpret(seqs, labels, m, device, input_type, criterion, threshold,
-               train_args["rev_complement"], args["output_dir"],
-               args["batch_size"], args["num_well_pred_seqs"])
+               train_args["filter_size"], train_args["rev_complement"],
+               args["output_dir"], args["batch_size"],
+               args["num_well_pred_seqs"])
 
     # Finish execution
     seconds = format(time.time() - start_time, ".2f")
@@ -185,24 +184,9 @@ def cli(**args):
         handle.close()
     print(f"Execution time {seconds} seconds")
 
-def one_hot_decode(encoded_seq):
-    """Reverts a sequence's one hot encoding."""
-
-    seq = []
-    code = list("ACGT")
- 
-    for i in encoded_seq.transpose(1, 0):
-        try:
-            seq.append(code[int(np.where(i == 1)[0])])
-        except:
-            # i.e. N?
-            seq.append("N")
-
-    return("".join(seq))
-
 def _interpret(seqs, labels, model, device, input_type, criterion,
-               threshold, rev_complement, output_dir="./", batch_size=100,
-               num_well_pred_seqs=None):
+               threshold, filter_size, rev_complement, output_dir="./",
+               batch_size=100, num_well_pred_seqs=None):
 
     # Initialize
     activations = []
@@ -210,7 +194,6 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
     outputs = []
     model.to(device)
     model.eval()
-    filter_size = 26
 
     # Get training DataLoader
     data_loader = get_data_loader(seqs, labels, batch_size)
@@ -301,46 +284,7 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
         pwms = get_pwms_explainn(activations, seqs, filter_size)
         pwm_to_meme(pwms, meme_file)
 
-    # # Get final linear layer weights
-    # weights = model.final.weight.detach().cpu().numpy()
-    # tsv_file = os.path.join(output_dir, "weights.tsv")
-    # if not os.path.exists(tsv_file):
-    #     data = []
-    #     for i, weight in enumerate(weights.T):
-    #         data.append([f"filter{i}"] + weight.tolist())
-    #     column_names = ["filter"] + list(range(weights.shape[0]))
-    #     df = pd.DataFrame(data, columns=column_names)
-    #     df.to_csv(tsv_file, sep="\t", index=False)
-
-    # # Get unit outputs
-    # for i, dl in enumerate([data_loader, rev_data_loader]):
-    #     if dl is None: # skip
-    #         continue
-    #     outs = get_explainn_unit_outputs(dl, model, device)
-    #     outputs.append(outs)
-    # if rev_complement:
-    #     outputs = np.concatenate(outputs)
-    # else:
-    #     outputs = outputs[0]
-
-    # # Get unit importances
-    # tsv_file = os.path.join(output_dir, "importances.tsv")
-    # if not os.path.exists(tsv_file):
-    #     data = []
-    #     target_labels = list(range(weights.shape[0]))
-    #     for i in tqdm(range(weights.shape[1]), total=weights.shape[1],
-    #                   bar_format=bar_format):
-    #         imps = get_specific_unit_importance(activations, model, outputs, i,
-    #                                             target_labels)
-    #         imps = np.array([d for d in imps])
-    #         data.extend([[f"filter{i}"] + j.tolist() for j in imps.T])
-    #     column_names = ["filter"] + target_labels
-    #     df = pd.DataFrame(data, columns=column_names)
-    #     df.to_csv(f"{tsv_file}.gz", sep="\t", index=False, compression="gzip")
-    #     df = df.groupby(["filter"]).median()\
-    #            .sort_values([column_names[-1]], ascending=False)
-    #     df.reset_index(inplace=True)
-    #     df.to_csv(tsv_file, sep="\t", index=False)
+    # Missing filter nullification step!!!
 
 if __name__ == "__main__":
     cli()

@@ -43,7 +43,7 @@ CONTEXT_SETTINGS = {
 @click.option(
     "-s", "--subsample",
     help="Number of sequences to subsample.",
-    type=int,
+    type=click.IntRange(min=1000),
     default=1000,
     show_default=True,
 )

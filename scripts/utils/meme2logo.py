@@ -3,11 +3,7 @@
 import click
 from functools import partial
 from multiprocessing import Pool
-import numpy as np
 import os
-import pandas as pd
-import re
-import sys
 from tqdm import tqdm
 bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 

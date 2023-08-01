@@ -10,15 +10,12 @@ import shutil
 import sys
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
                                 os.pardir))
-sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
-                                os.pardir,
-                                os.pardir))
 import time
 import torch
 
 from explainn.train.train import train_explainn
 from explainn.utils.tools import pearson_loss
-from explainn.models.networks import DanQ
+from explainn.models.networks import ExplaiNN
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device)
 
@@ -27,6 +24,14 @@ CONTEXT_SETTINGS = {
 }
 
 @click.command(no_args_is_help=True, context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "model_file",
+    type=click.Path(exists=True, resolve_path=True),
+)
+@click.argument(
+    "training_parameters_file",
+    type=click.Path(exists=True, resolve_path=True),
+)
 @click.argument(
     "training_file",
     type=click.Path(exists=True, resolve_path=True),
@@ -59,13 +64,6 @@ CONTEXT_SETTINGS = {
     help="Return the program's running execution time in seconds.",
     is_flag=True,
 )
-@optgroup.group("DanQ")
-@optgroup.option(
-    "--input-length",
-    help="Input length (for longer and shorter sequences, trim or add padding, i.e. Ns, up to the specified length).",
-    type=int,
-    required=True,
-)
 @optgroup.group("Optimizer")
 @optgroup.option(
     "--criterion",
@@ -77,7 +75,7 @@ CONTEXT_SETTINGS = {
     "--lr",
     help="Learning rate.",
     type=float,
-    default=0.0005,
+    default=5e-05,
     show_default=True,
 )
 @optgroup.option(
@@ -87,7 +85,7 @@ CONTEXT_SETTINGS = {
     default="Adam",
     show_default=True,
 )
-@optgroup.group("Training")
+@optgroup.group("Fine-tuning")
 @optgroup.option(
     "--batch-size",
     help="Batch size.",
@@ -101,6 +99,11 @@ CONTEXT_SETTINGS = {
     type=int,
     default=0,
     show_default=True,
+)
+@optgroup.option(
+    "--freeze",
+    help="Do not update the model weights during training.",
+    is_flag=True,
 )
 @optgroup.option(
     "--num-epochs",
@@ -147,15 +150,20 @@ def cli(**args):
     # Load Data  #
     ##############
 
+    # Load training parameters
+    handle = get_file_handle(args["training_parameters_file"], "rt")
+    train_args = json.load(handle)
+    handle.close()
+
     # Get training/test sequences and labels
     train_seqs, train_labels, _ = get_seqs_labels_ids(args["training_file"],
                                                       args["debugging"],
                                                       args["rev_complement"],
-                                                      args["input_length"])
+                                                      train_args["input_length"])
     test_seqs, test_labels, _ = get_seqs_labels_ids(args["validation_file"],
                                                     args["debugging"],
                                                     args["rev_complement"],
-                                                    args["input_length"])
+                                                    train_args["input_length"])
 
     # Get training/test DataLoaders
     train_loader = get_data_loader(train_seqs, train_labels,
@@ -163,8 +171,11 @@ def cli(**args):
     test_loader = get_data_loader(test_seqs, test_labels,
                                   args["batch_size"], shuffle=True)
 
+    # Load pre-trained state dict
+    state_dict_pretrain = torch.load(args["model_file"])
+
     ##############
-    # Train      #
+    # Fine-tune  #
     ##############
 
     # Infer input length/type, and the number of classes
@@ -186,14 +197,31 @@ def cli(**args):
     elif args["criterion"].lower() == "poissonnll":
         criterion = torch.nn.PoissonNLLLoss()
 
-    # Get model and optimizer
-    m = DanQ(args["input_length"], num_classes)
+    # Get model
+    m = ExplaiNN(train_args["num_units"], train_args["input_length"],
+                 num_classes, train_args["filter_size"],
+                 train_args["num_fc"], train_args["pool_size"],
+                 train_args["pool_stride"])
 
     # Get optimizer
     o = _get_optimizer(args["optimizer"], m.parameters(), args["lr"])
 
-    # Train
-    _train(train_loader, test_loader, m, device, criterion, o,
+    # Transfer learning
+    state_dict = m.state_dict()
+    for k in state_dict:
+        if not k.startswith("final"): # do not transfer the final layer
+            state_dict[k] = state_dict_pretrain[k]
+    m.load_state_dict(state_dict)
+
+    # Freeze weights
+    if args["freeze"]:
+        for n, p in m.named_parameters():
+            # Allow learning the weights of the final layer
+            if not n.startswith("final") and p.requires_grad:
+                p.requires_grad = False
+
+    # Fine-tune
+    _finetune(train_loader, test_loader, m, device, criterion, o,
            args["num_epochs"], args["output_dir"], None, True, False,
            args["checkpoint"], args["patience"])
 
@@ -207,14 +235,14 @@ def cli(**args):
         handle.close()
     print(f"Execution time {seconds} seconds")
 
-def _get_optimizer(optimizer, parameters, lr=0.0005):
+def _get_optimizer(optimizer, parameters, lr=5e-05):
 
     if optimizer.lower() == "adam":
         return torch.optim.Adam(parameters, lr=lr)
     elif optimizer.lower() == "sgd":
         return torch.optim.SGD(parameters, lr=lr)
 
-def _train(train_loader, test_loader, model, device, criterion, optimizer,
+def _finetune(train_loader, test_loader, model, device, criterion, optimizer,
            num_epochs=100, output_dir="./", name_ind=None, verbose=False,
            trim_weights=False, checkpoint=0, patience=0):
 

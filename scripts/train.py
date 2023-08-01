@@ -98,12 +98,7 @@ CONTEXT_SETTINGS = {
     default=7,
     show_default=True,
 )
-@optgroup.option(
-    "--weights-file",
-    help="File containing model weights.",
-    type=click.Path(resolve_path=True),
-)
-@optgroup.group("\n  Optimizer")
+@optgroup.group("Optimizer")
 @optgroup.option(
     "--criterion",
     help="Loss (objective) function to use. Select \"BCEWithLogits\" for binary or multi-class classification tasks (e.g. predict the binding of one or more TFs to a sequence), \"CrossEntropy\" for multi-class classification tasks wherein only one solution is possible (e.g. predict the species of origin of a sequence between human, mouse or zebrafish), \"MSE\" for regression tasks (e.g. predict probe intensity signals), \"Pearson\" also for regression tasks (e.g. modeling accessibility across 81 cell types), and \"PoissonNLL\" for modeling count data (e.g. total number of reads at ChIP-/ATAC-seq peaks).",
@@ -114,7 +109,7 @@ CONTEXT_SETTINGS = {
     "--lr",
     help="Learning rate.",
     type=float,
-    default=0.003,
+    default=0.0005,
     show_default=True,
 )
 @optgroup.option(
@@ -160,7 +155,7 @@ CONTEXT_SETTINGS = {
 )
 @optgroup.option(
     "--trim-weights",
-    help="Constrain output weights to be positive.",
+    help="Constrain output weights to be non-negative (i.e. to ease interpretation).",
     is_flag=True,
 )
 
@@ -205,12 +200,8 @@ def cli(**args):
     ##############
 
     # Infer input length/type, and the number of classes
-    input_length = train_seqs[0].shape[1]
+    # input_length = train_seqs[0].shape[1]
     num_classes = train_labels[0].shape[0]
-    # if np.unique(train_labels[:, 0]).size == 2:
-    #     input_type = "binary"
-    # else:
-    #     input_type = "non-binary"
 
     # Get device
     device = get_device()
@@ -228,9 +219,11 @@ def cli(**args):
         criterion = torch.nn.PoissonNLLLoss()
 
     # Get model and optimizer
-    m = ExplaiNN(args["num_units"], input_length, num_classes,
+    m = ExplaiNN(args["num_units"], args["input_length"], num_classes,
                  args["filter_size"], args["num_fc"], args["pool_size"],
-                 args["pool_stride"], args["weights_file"])
+                 args["pool_stride"])
+
+    # Get optimizer
     o = _get_optimizer(args["optimizer"], m.parameters(), args["lr"])
 
     # Train
@@ -248,7 +241,7 @@ def cli(**args):
         handle.close()
     print(f"Execution time {seconds} seconds")
 
-def _get_optimizer(optimizer, parameters, lr=0.003):
+def _get_optimizer(optimizer, parameters, lr=0.0005):
 
     if optimizer.lower() == "adam":
         return torch.optim.Adam(parameters, lr=lr)

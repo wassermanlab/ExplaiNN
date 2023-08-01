@@ -2,10 +2,7 @@
 
 from Bio import SeqIO
 from Bio.Seq import Seq
-try:
-    from Bio.SeqUtils import gc_fraction
-except:
-    from Bio.SeqUtils import GC as gc_fraction
+from Bio.SeqUtils import gc_fraction
 import click
 import copy
 import importlib
@@ -49,7 +46,9 @@ CONTEXT_SETTINGS = {
 @click.option(
     "-s", "--subsample",
     help="Number of sequences to subsample.",
-    type=int,
+    type=click.IntRange(min=0),
+    default=0,
+    show_default=True,
 )
 @click.option(
     "-t", "--transform",
@@ -59,22 +58,10 @@ CONTEXT_SETTINGS = {
 )
 
 def cli(**args):
-
-    # Group sequences based on their %GC content
-    gc_groups = _get_GC_groups(args["fasta_file"], args["dna"],
-                               args["transform"])
-
-    # Match sequences based on their %GC content
-    matched_seqs = _match_seqs_by_GC(gc_groups, args["random_seed"])
-
-    # Subsample sequences based on their %GC content
-    if args["subsample"]:
-        sampled_seqs = lib._subsample_seqs_by_GC(matched_seqs,
-                                                 args["random_seed"],
-                                                 abs(args["subsample"]))
-    else:
-        sampled_seqs = matched_seqs
-    sampled_seqs.insert(0, ["labels"] + list(args["fasta_file"]))
+    
+    sampled_seqs = match_seqs_by_GC(args["fasta_file"], args["dna"],
+                                    args["random_seed"], args["subsample"],
+                                    args["transform"])
 
     # Write
     if args["output_file"] is not None:
@@ -83,6 +70,26 @@ def cli(**args):
         handle = sys.stdout
     json.dump(sampled_seqs, handle, indent=4, sort_keys=True)
     handle.close()
+
+def match_seqs_by_GC(fasta_files, dna="lowercase", random_seed=1714,
+                     subsample=0, transform=None):
+    
+    # Group sequences based on their %GC content
+    gc_groups = _get_GC_groups(fasta_files, dna, transform)
+
+    # Match sequences based on their %GC content
+    matched_seqs = _match_seqs_by_GC(gc_groups, random_seed)
+
+    # Subsample sequences based on their %GC content
+    if subsample:
+        sampled_seqs = lib._subsample_seqs_by_GC(matched_seqs,
+                                                 random_seed,
+                                                 subsample)
+    else:
+        sampled_seqs = matched_seqs
+    sampled_seqs.insert(0, ["labels"] + list(fasta_files))
+
+    return(sampled_seqs)
 
 def _get_GC_groups(fasta_files, dna="lowercase", transform=None):
 
@@ -101,7 +108,7 @@ def _get_GC_groups(fasta_files, dna="lowercase", transform=None):
         # For each SeqRecord...
         for record in SeqIO.parse(fasta_file, "fasta"):
 
-            gc = round(gc_fraction(record.seq))
+            gc = round(gc_fraction(record.seq)*100)
 
             if transform:
 

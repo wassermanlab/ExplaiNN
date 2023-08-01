@@ -2,13 +2,10 @@
 
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
-import copy                                   
 import json
 import numpy as np
 import os
 import pandas as pd
-import pickle
-import shutil
 import sys
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
                                 os.pardir))
@@ -120,6 +117,7 @@ def cli(**args):
     handle.write(json.dumps(args, indent=4, sort_keys=True))
     handle.close()
 
+
     ##############
     # Load Data  #
     ##############
@@ -128,6 +126,10 @@ def cli(**args):
     handle = get_file_handle(args["training_parameters_file"], "rt")
     train_args = json.load(handle)
     handle.close()
+    if "training_parameters_file" in train_args: # i.e. for fine-tuned models
+        handle = get_file_handle(train_args["training_parameters_file"], "rt")
+        train_args = json.load(handle)
+        handle.close()
 
     # Get training sequences and labels
     seqs, labels, _ = get_seqs_labels_ids(args["training_file"],
@@ -167,8 +169,7 @@ def cli(**args):
     m = ExplaiNN(train_args["num_units"], train_args["input_length"],
                  num_classes, train_args["filter_size"], train_args["num_fc"],
                  train_args["pool_size"], train_args["pool_stride"],
-                 train_args["weights_file"])
-    m.load_state_dict(torch.load(args["model_file"]))
+                 args["model_file"])
 
     # Interpret
     _interpret(seqs, labels, m, device, input_type, criterion, threshold,
@@ -185,21 +186,6 @@ def cli(**args):
         handle.write(f"{seconds} seconds")
         handle.close()
     print(f"Execution time {seconds} seconds")
-
-def one_hot_decode(encoded_seq):
-    """Reverts a sequence's one hot encoding."""
-
-    seq = []
-    code = list("ACGT")
- 
-    for i in encoded_seq.transpose(1, 0):
-        try:
-            seq.append(code[int(np.where(i == 1)[0])])
-        except:
-            # i.e. N?
-            seq.append("N")
-
-    return("".join(seq))
 
 def _interpret(seqs, labels, model, device, input_type, criterion,
                threshold, filter_size, rev_complement, output_dir="./",
@@ -286,7 +272,7 @@ def _interpret(seqs, labels, model, device, input_type, criterion,
     # Get activations
     for dl in [data_loader, rev_data_loader]:
         if dl is None: # skip
-            continue       
+            continue
         acts = get_explainn_unit_activations(dl, model, device)
         activations.append(acts)
     if rev_complement:

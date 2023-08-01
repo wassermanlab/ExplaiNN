@@ -76,7 +76,7 @@ def get_seqs_labels_ids(tsv_file, debugging=False, rev_complement=False,
                         input_length="infer from data"):
 
     # Sequences / labels / ids
-    df = pd.read_table(tsv_file, header=None)
+    df = pd.read_table(tsv_file, header=None, comment="#")
     ids = df.pop(0).values
     if input_length != "infer from data":
         seqs = [_resize_sequence(s, input_length) for s in df.pop(1).values]

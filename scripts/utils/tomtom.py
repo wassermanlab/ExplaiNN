@@ -8,6 +8,7 @@ from multiprocessing import Pool
 import numpy as np
 import os
 import pandas as pd
+from pandas.errors import EmptyDataError
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), os.pardir))
 import subprocess as sp
@@ -222,7 +223,8 @@ def _load_Tomtom_files(tomtom_dir, col_names=None):
     for tsv_file in os.listdir(tomtom_dir):
         if tsv_file.endswith(".tsv.gz"):
             dfs.append(pd.read_table(os.path.join(tomtom_dir, tsv_file),
-                                     header=0, usecols=col_names, comment="#"))
+                                     header=0, usecols=col_names,
+                                     comment="#"))
 
     return(pd.concat(dfs))
 

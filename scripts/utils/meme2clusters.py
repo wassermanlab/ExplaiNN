@@ -31,6 +31,7 @@ CONTEXT_SETTINGS = {
 @click.argument(
     "meme_file",
     type=click.Path(exists=True, resolve_path=True),
+    nargs=-1,
 )
 @click.option(
     "-c", "--cpu-threads",
@@ -104,6 +105,8 @@ def cli(**args):
     int_names = {}
     _get_motifs(args["meme_file"], motifs_dir, args["cpu_threads"])
     for m in os.listdir(motifs_dir):
+        if m == "motifs.meme":
+            continue
         motifs.append(os.path.join(motifs_dir, m))
         _, n = _get_PWMs(motifs[-1])
         base_name = os.path.splitext(os.path.basename(m))[0]
@@ -115,14 +118,14 @@ def cli(**args):
     npz_file = os.path.join(args["output_dir"], "similarities.npz")
     if not os.path.exists(npz_file):
         kwargs = {"bar_format": bar_format, "total": len(motifs)}
+        meme_file = os.path.join(motifs_dir, "motifs.meme")
         pool = Pool(args["cpu_threads"])
-        p = partial(_compute_Tomtom_similarities, meme_file=args["meme_file"],
+        p = partial(_compute_Tomtom_similarities, meme_file=meme_file,
                     tomtom_dir=tomtom_dir)
         for _ in tqdm(pool.imap(p, motifs), **kwargs):
             pass
         arr = _load_Tomtom_similarities(tomtom_dir, args["cpu_threads"])
         np.savez_compressed(npz_file, similarities=arr)
-    # arr = np.load(npz_file)["similarities"]
 
     # Get clusters
     tsv_file = os.path.join(args["output_dir"], "clusters.tsv.gz")
@@ -210,40 +213,42 @@ def cli(**args):
         handle.close()
     print(f"Execution time {seconds} seconds")
 
-def _get_motifs(meme_file, motifs_dir, cpu_threads=1):
+def _get_motifs(files, motifs_dir, cpu_threads=1):
 
     # Initialize
     motifs = []
     parse = False
 
     # Get motifs
-    handle = get_file_handle(meme_file, "rt")
-    for line in handle:
-        line = line.strip("\n")
-        if line.startswith("MOTIF"):
-            motifs.append([])
-            parse = True
-        if parse:
-            motifs[-1].append(line)
-    handle.close()
+    for meme_file in files:
+        handle = get_file_handle(meme_file, "rt")
+        for line in handle:
+            line = line.strip("\n")
+            if line.startswith("MOTIF"):
+                motifs.append([])
+                parse = True
+            if parse:
+                motifs[-1].append(line)
+        handle.close()
 
     # Create motif files
+    args = []
     zfill = len(str(len(motifs)))
+    for i, m in enumerate(motifs):
+        prefix = str(i).zfill(zfill)
+        meme_file = os.path.join(motifs_dir, f"{prefix}.meme")
+        args.append((meme_file, [m]))
     kwargs = {"bar_format": bar_format, "total": len(motifs)}
     pool = Pool(cpu_threads)
-    p = partial(__write_motif, motifs_dir=motifs_dir, zfill=zfill)
-    for _ in tqdm(pool.imap(p, enumerate(motifs)), **kwargs):
+    for _ in tqdm(pool.starmap(__write_motifs, args), **kwargs):
         pass
+    meme_file = os.path.join(motifs_dir, "motifs.meme")
+    __write_motifs(meme_file, motifs)
 
-def __write_motif(i_motif, motifs_dir, zfill=0):
+def __write_motifs(meme_file, motifs):
 
-    # Initialize
-    i, motif = i_motif
-    prefix = str(i).zfill(zfill)
-
-    motif_file = os.path.join(motifs_dir, f"{prefix}.meme")
-    if not os.path.exists(motif_file):
-        handle = get_file_handle(motif_file, "wt")
+    if not os.path.exists(meme_file):
+        handle = get_file_handle(meme_file, "wt")
         handle.write("MEME version 4\n\n")
         handle.write("ALPHABET= ACGT\n\n")
         handle.write("strands: + -\n\n")
@@ -251,8 +256,9 @@ def __write_motif(i_motif, motifs_dir, zfill=0):
             "Background letter frequencies (from uniform background):\n"
         )
         handle.write("A 0.25000 C 0.25000 G 0.25000 T 0.25000\n\n")
-        for line in motif:
-            handle.write(f"{line}\n")
+        for m in motifs:
+            for line in m:
+                handle.write(f"{line}\n")
         handle.close()
 
 def _compute_Tomtom_similarities(motif_file, meme_file, tomtom_dir):

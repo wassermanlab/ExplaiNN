@@ -95,6 +95,10 @@ def cli(**args):
     handle = get_file_handle(args["training_parameters_file"], "rt")
     train_args = json.load(handle)
     handle.close()
+    if "training_parameters_file" in train_args: # i.e. for fine-tuned models
+        handle = get_file_handle(train_args["training_parameters_file"], "rt")
+        train_args = json.load(handle)
+        handle.close()
 
     # Get test sequences and labels
     seqs, labels, _ = get_seqs_labels_ids(args["test_file"],
@@ -117,8 +121,7 @@ def cli(**args):
     device = get_device()
 
     # Get model
-    m = DanQ(train_args["input_length"], num_classes, train_args["weights_file"])
-    m.load_state_dict(torch.load(args["model_file"]))
+    m = DanQ(train_args["input_length"], num_classes, args["model_file"])
 
     # Test
     _test(seqs, labels, m, device, input_type, train_args["rev_complement"],
@@ -169,7 +172,7 @@ def _test(seqs, labels, model, device, input_type, rev_complement,
         avg_predictions = np.empty(predictions[0].shape)
         for i in range(predictions[0].shape[1]):
             avg_predictions[:, i] = np.mean([predictions[0][:, i],
-                                            predictions[1][:, i]], axis=0)
+                                             predictions[1][:, i]], axis=0)
     else:
         avg_predictions = predictions[0]
     if input_type == "binary":
