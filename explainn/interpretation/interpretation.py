@@ -11,41 +11,40 @@ bar_format = "{percentage:3.0f}%|{bar:20}{r_bar}"
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
-def get_average_activ(self, inputs, outputs):
+def get_avg_activation(self, outputs):
     """
-    Pytorch Hook that will get the average activation for each layer on the current batch
-    which can be usefull to get the average usage of the filter
+    Pytorch Hook that will get the average activation for each layer on the
+    current batch which can be usefull to get the average usage of the filter
     :param self: pytorch layer, the layer the hook is attached to
-    :param inputs: tensor, current input tensor of the layer
     :param outputs: tensor, current output tensor of the layer
     """
 
-    if self.mode[0] == 'Baseline':
-        self.register_buffer('average_activation', outputs.mean(0).mean(1))
+    if self.mode[0] == "Baseline":
+        self.register_buffer("average_activation", outputs.mean(0).mean(1))
 
 
 # hook to assign the filter values to the average activation across batches
-def set_filt_to_aver(self, inputs, outputs):
+def set_filter_to_avg_activation(self, outputs):
     """
-    Pytorch hook to assign the filter values to the average activation across batches
+    Pytorch hook to assign the filter values to the average activation across
+    batches
     :param self: pytorch layer, the layer the hook is attached to
-    :param inputs: tensor, current input tensor of the layer
     :param outputs: tensor, current output tensor of the layer
     """
 
-    if self.mode[0] == 'Compare':
+    if self.mode[0] == "Compare":
         outputs[:, self.mode[1], :] = self.average_activation[self.mode[1]]
 
 
-def nullify_filter_strict(self, input, output):
+def nullify_filter_strict(self, output):
     """
-    Pytorch Hook that will nullify the output of one of the filter indicated in mode for that layer
+    Pytorch hook that will nullify the output of one of the filter indicated
+    in mode for that layer
     :param self: pytorch layer, the layer the hook is attached to
-    :param input: tensor, current input tensor of the layer
     :param output: tensor, current output tensor of the layer
     """
 
-    if self.mode[0] == 'Compare':
+    if self.mode[0] == "Compare":
         output[:, self.mode[1], :] = 0
 
 
@@ -145,7 +144,7 @@ def get_explainn_unit_activations(data_loader, model, device):
             seq = seq.repeat(1, model._options["num_cnns"], 1)
             act = model.linears[:3](seq)
 
-            running_activations.extend(act.cpu().numpy())
+            running_activations.extend(act.cpu().numpy().astype(np.half))
 
     return np.array(running_activations)
 
@@ -169,7 +168,7 @@ def get_danq_activations(data_loader, model, device):
 
             act = model.conv_layer[:2](seq)
 
-            running_activations.extend(act.cpu().numpy())
+            running_activations.extend(act.cpu().numpy().astype(np.half))
 
     return np.array(running_activations)
 
