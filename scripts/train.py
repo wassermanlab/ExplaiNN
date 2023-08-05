@@ -109,7 +109,7 @@ CONTEXT_SETTINGS = {
     "--lr",
     help="Learning rate.",
     type=float,
-    default=0.0005,
+    default=0.003,
     show_default=True,
 )
 @optgroup.option(
