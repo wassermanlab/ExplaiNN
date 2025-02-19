@@ -103,6 +103,14 @@ def get_criterion():
         "poissonnll": nn.PoissonNLLLoss()
     }
 
+def get_or_create_dirs(output_path, output_dir):
+    """
+    """
+    new_dir = os.path.join(output_path, output_dir)
+    if not os.path.isdir(new_dir):
+        os.makedirs(new_dir)
+    return new_dir
+
 
 def get_data_splits(data, splits=[80, 10, 10], random_seed=1714):
     """

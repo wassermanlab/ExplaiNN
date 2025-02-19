@@ -24,23 +24,28 @@ CONTEXT_SETTINGS = {
 )
 def main(**args):
     # Read config file
+    # TODO: Validate the fields of the config file
     with open(args["config_file"]) as f:
         config = json.load(f)
 
     # TODO: Check that output dir exists
 
+
+    # TODO: Add preprocessing steps as arguments/config, eg. match-seqs-by-gc,
+    # subsample-seqs-by-gc, resize, etc. 
+
+
     # Preprocess the data
+    # TODO: Add this as an argument/in config
     classes = combine_seq_files(config["data"]["input_files"])
     splits = json2explainn(classes)
-
-    # Write outputs
     save_data_splits(config["data"]["output_dir"],
         splits[0],
         splits[1],
         splits[2],
         config["data"]["prefix"],
     )
-    # Update config file with output location?
+    # TODO: Update config file with output location? Where to store path to intermediates
 
     if config["options"]["store_intermediates"]:
         handle = open(os.path.join(config["data"]["output_dir"], "combined_data.json"), "wt")
@@ -59,8 +64,29 @@ def main(**args):
     # Finetune the model
     # TODO: Specify this with config/arguments
 
+
     # Further interpretation
-    # TODO: Specify this with config/arguments
+    # TODO: Specify these with config/arguments
+    # MEME to logos
+    meme2logo(config)
+
+    # MEME to scores
+    #meme2scores(config)
+
+    # MEME to clusters
+    #meme2clusters(config)
+
+    # Tomtom
+    #tomtom(config)
+
+    # JASPAR to logos
+    #jaspar2logo(config)
+
+    # PWM to scores
+    #pwm2scores(config)
+
+
+
 
 
 if __name__=='__main__':

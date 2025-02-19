@@ -29,6 +29,7 @@ def main(**args):
     """
     """
     # Read config file
+    # TODO: Validate the fields of the config file
     with open(args["config_file"]) as f:
         config = json.load(f)
 
@@ -75,7 +76,7 @@ def run_train(config):
     try:
         criterion = get_criterion()[config["optimizer"]["criterion"].lower()]
     except KeyError:
-        # TODO: Create error for this
+        # TODO: Create error for this instead of print statement
         print("""Criterion not found, please select from the following list:
         BCEWithLogits
         CrossEntropy

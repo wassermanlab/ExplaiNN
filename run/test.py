@@ -7,6 +7,15 @@ import torch
 import click
 import json
 
+import logging
+logging.basicConfig(
+    format="{asctime} - {name} - {levelname} - {message}", 
+    style="{",
+    datefmt="%Y-%m-%d %H:%M", 
+    level=logging.DEBUG
+)
+logger = logging.getLogger(__name__)
+
 import numpy as np
 import pandas as pd
 
@@ -16,7 +25,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
 
 from explainn.models.networks import ExplaiNN
 from explainn.interpretation.interpretation import get_explainn_predictions
-from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
+from run.utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
                    get_device, data_split_names, get_criterion)
 
 CONTEXT_SETTINGS = {
@@ -31,6 +40,7 @@ def main(**args):
     """
     """
     # Read config file
+    # TODO: Validate the fields of the config file
     with open(args["config_file"]) as f:
         config = json.load(f)
         
