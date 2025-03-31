@@ -73,7 +73,7 @@ def name_path(suffix, output_dir="./", prefix=None):
         str: formatted filepath 
     """
     return os.path.join(output_dir, ".".join(filter(None, (prefix, suffix))))
-                    
+
 
 def get_file_handle(file_name, mode):
     """
@@ -190,7 +190,6 @@ def _dna_one_hot_many(seqs):
     return(np.array([dna_one_hot(str(seq)) for seq in seqs]))
 
 
-
 def get_data_loader(seqs, labels, batch_size=100, shuffle=False):
 
     # TensorDatasets
@@ -237,3 +236,97 @@ def shuffle_string(s, k=2, random_seed=1714):
     random.Random(random_seed).shuffle(l)
 
     return "".join(l)
+
+
+def validate_config(config):
+    """Validating the fields of the config file against the expected structure
+    
+        Ensures that the config dictionary has all the required keys and right types. 
+        
+        Error: 
+        - Missing a field, will throw a ValueError 
+        - Wrong types, will throw a TypeError
+    """
+    
+    # required fields being validated 
+    required_fields = {
+        "data": {
+            "input_files": list,
+            "output_dir": str,
+            "prefix": str,
+            "rev_complement": bool,
+            "input_length": int,
+            "intermediates": {
+                "training_file": str,
+                "validation_file": str,
+                "test_file": str,
+            },
+        },
+        "cnn": {
+            "filter_size": int,
+            "num_fc": int,
+            "num_units": int,
+            "pool_size": int,
+            "pool_stride": int,
+        },
+        "training": {
+            "cpu_threads": int,
+            "batch_size": int,
+            "num_epochs": int,
+            "checkpoint": int,
+            "patience": int,
+            "trim_weights": bool,
+        },
+        "optimizer": {"criterion": str, "lr": float, "optimizer": str},
+        "interpretation": {
+            "model_file": str,
+            "cpu_threads": int,
+            "batch_size": int,
+            "num_well_pred_seqs": int,
+            "correlation": int,
+            "exact_match": bool,
+            "percentile_bottom": int,
+            "percentile_top": int,
+        },
+        "options": {"debugging": bool, "use_time": bool, "store_intermediates": bool},
+        "postprocess": {
+            "cpu_threads": int,
+            "target_file": str,
+            "tomtom": {
+                "dist": str,
+                "evalue": bool,
+                "min_overlap": int,
+                "motif_pseudo": float,
+                "threshold": float,
+            },
+        },
+    }
+    
+    for section, fields in required_fields.items():
+        if section not in config:
+            raise ValueError(f"Missing section in config -- {section}")
+        
+        
+        for key, type in fields.items():
+
+            
+            if isinstance(type, dict):
+                if not isinstance(config[section][key], dict):
+                    raise TypeError(f"Incorrect type for {section}.{key} -- Intended type: dict")                
+                
+                for subsection, subtype in type.items():
+                    if subsection not in config[section][key]:
+                        raise ValueError(f"Missing subsection value in config -- {section}.{key}.{subsection}")
+                    
+                    if not isinstance(config[section][key][subsection], subtype):
+                        raise TypeError(f"Incorrect type for {section}.{key}.{subsection} -- Intended type: {subtype}")
+                    
+            else:
+                if key not in config[section]:
+                    raise ValueError(f"Missing section value in config -- {section}.{key}")
+                
+                if not isinstance(config[section][key], type):
+                    raise TypeError(f"Incorrect type for {section}.{key} -- Intended type: {type}")
+                
+
+    return True
