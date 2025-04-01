@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+import logging
 import os
 import sys
 import time
 import torch
 import click
 import json
+import constants
 
 import pandas as pd
 
@@ -15,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
 from explainn.train.train import train_explainn
 from explainn.models.networks import ExplaiNN
 from utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
-                   get_device, data_split_names, get_criterion)
+                   get_device, data_split_names, get_criterion, validate_config)
 
 CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
@@ -29,11 +31,23 @@ def main(**args):
     """
     """
     # Read config file
-    # TODO: Validate the fields of the config file
     with open(args["config_file"]) as f:
         config = json.load(f)
 
-    # TODO: Check that output dir exists
+    # Validate the fields of the config file
+    try:
+        validate_config(config)
+        logging.info("Config file validated.")
+    except Exception as e:
+        logging.error(str(e))
+
+    # Check that output dir exists
+    output_dir = config["data"]["output_dir"]
+    if not os.path.isdir(output_dir):
+        raise OSError(
+            f"The output directory: {output_dir} does not exist.\n"
+            f"Check the path relative to the current working directory: {os.getcwd()}"
+        )
     
     run_train(config)
 
@@ -76,15 +90,11 @@ def run_train(config):
     try:
         criterion = get_criterion()[config["optimizer"]["criterion"].lower()]
     except KeyError:
-        # TODO: Create error for this instead of print statement
-        print("""Criterion not found, please select from the following list:
-        BCEWithLogits
-        CrossEntropy
-        MSE
-        Pearson
-        PoissonNLL
-        """)
-        return
+        raise KeyError(
+            f"Invalid criterion '{config['optimizer']['criterion']}'. "
+            f"Please choose one of: {', '.join(get_criterion().keys())}"
+        )
+    
 
     # Get model
     m = ExplaiNN(config["cnn"]["num_units"], config["data"]["input_length"], 
@@ -116,13 +126,8 @@ def run_train(config):
 def _get_optimizer(optimizer, parameters, lr=0.0005):
     """
     """
-    # TODO: Change this to a map
-    if optimizer.lower() == "adam":
-        return torch.optim.Adam(parameters, lr=lr)
-    elif optimizer.lower() == "sgd":
-        return torch.optim.SGD(parameters, lr=lr)
-
-
+    return constants.OPTIMIZERS[optimizer.lower()](parameters, lr=lr)
+    
 def _train(train_loader, test_loader, model, device, criterion, optimizer,
     num_epochs=100, output_dir="./", name_ind=None, verbose=False,
     trim_weights=False, checkpoint=0, patience=0):
