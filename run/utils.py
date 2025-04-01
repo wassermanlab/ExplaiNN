@@ -3,6 +3,7 @@ import os
 
 import click
 import gzip
+import constants
 from functools import partial
 import numpy as np
 import pandas as pd
@@ -93,15 +94,8 @@ def get_file_handle(file_name, mode):
 
 def get_criterion():
     """
-    TODO: Move to constants.py?
     """
-    return {
-        "bcewithlogits": nn.BCEWithLogitsLoss(),
-        "crossentropy": nn.CrossEntropyLoss(),
-        "mse": nn.MSELoss(),
-        "pearson": pearson_loss,
-        "poissonnll": nn.PoissonNLLLoss()
-    }
+    return constants.CRITERIONS
 
 def get_or_create_dirs(output_path, output_dir):
     """
@@ -249,58 +243,7 @@ def validate_config(config):
     """
     
     # required fields being validated 
-    required_fields = {
-        "data": {
-            "input_files": list,
-            "output_dir": str,
-            "prefix": str,
-            "rev_complement": bool,
-            "input_length": int,
-            "intermediates": {
-                "training_file": str,
-                "validation_file": str,
-                "test_file": str,
-            },
-        },
-        "cnn": {
-            "filter_size": int,
-            "num_fc": int,
-            "num_units": int,
-            "pool_size": int,
-            "pool_stride": int,
-        },
-        "training": {
-            "cpu_threads": int,
-            "batch_size": int,
-            "num_epochs": int,
-            "checkpoint": int,
-            "patience": int,
-            "trim_weights": bool,
-        },
-        "optimizer": {"criterion": str, "lr": float, "optimizer": str},
-        "interpretation": {
-            "model_file": str,
-            "cpu_threads": int,
-            "batch_size": int,
-            "num_well_pred_seqs": int,
-            "correlation": int,
-            "exact_match": bool,
-            "percentile_bottom": int,
-            "percentile_top": int,
-        },
-        "options": {"debugging": bool, "use_time": bool, "store_intermediates": bool},
-        "postprocess": {
-            "cpu_threads": int,
-            "target_file": str,
-            "tomtom": {
-                "dist": str,
-                "evalue": bool,
-                "min_overlap": int,
-                "motif_pseudo": float,
-                "threshold": float,
-            },
-        },
-    }
+    required_fields = constants.CONFIG_REQUIRED_FIELDS
     
     for section, fields in required_fields.items():
         if section not in config:

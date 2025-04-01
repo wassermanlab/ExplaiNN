@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])),
 from explainn.models.networks import ExplaiNN
 from explainn.interpretation.interpretation import get_explainn_predictions
 from run.utils import (get_file_handle, get_seqs_labels_ids, get_data_loader,
-                   get_device, data_split_names, get_criterion)
+                   get_device, data_split_names, get_criterion, validate_config)
 
 CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
@@ -40,11 +40,23 @@ def main(**args):
     """
     """
     # Read config file
-    # TODO: Validate the fields of the config file
     with open(args["config_file"]) as f:
         config = json.load(f)
         
-    # TODO: Check that output dir exists
+    # Validate the fields of the config file
+    try:
+        validate_config(config)
+        logging.info("Config file validated.")
+    except Exception as e:
+        logging.error(str(e))
+
+    # Check that output dir exists
+    output_dir = config["data"]["output_dir"]
+    if not os.path.isdir(output_dir):
+        raise OSError(
+            f"The output directory: {output_dir} does not exist.\n"
+            f"Check the path relative to the current working directory: {os.getcwd()}"
+        )
     
     test_model(config)
 
